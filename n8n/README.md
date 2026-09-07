@@ -20,6 +20,7 @@ edita în n8n cu intenția de a păstra modificarea — modifică sursa și rule
 | `SW03_send_message.json` | **singura cale prin care pleacă un mesaj** | `{ client_id, contact, request, template }` |
 | `WF00_preferences_intake.json` | formularul de preferințe → GHL | webhook `POST /preferinte/:client_id` |
 | `WF_ERR_alerting.json` | alertare la eșec, setat ca Error Workflow pe toate | — |
+| `WF_SETUP_provisioning.json` | creează în GHL câmpurile, tag-urile și custom values-urile cerute de config | formular `/form/provisioning-ghl` |
 
 ## Import
 
@@ -29,6 +30,18 @@ edita în n8n cu intenția de a păstra modificarea — modifică sursa și rule
    Workflow-urile se referă unele la altele prin aceste variabile, nu prin id-uri hardcodate.
 4. La fiecare workflow: Settings → Error Workflow → `WF_ERR · Alertare la eșec`.
 5. Setează `CONFIG_BASE_URL` către locul de unde n8n poate citi `config/clients/<id>.json`.
+6. Rulează `WF_SETUP` din formularul lui ca să provisionezi sub-contul GHL.
+
+## Provisioning: script sau workflow
+
+`scripts/provision-ghl.mjs` și `WF_SETUP` fac același lucru și **împart aceeași funcție de plan**
+(`runtime/provision.mjs`), deci dau același rezultat. Alegi după cine are acces la API-ul GHL:
+
+- **scriptul**, dacă rulezi de pe o mașină cu acces la `services.leadconnectorhq.com`;
+- **workflow-ul**, dacă nu — n8n rulează oricum în rețeaua în care GHL e accesibil.
+
+Ambele sunt idempotente și au mod „doar planul". Ambele raportează conflictele de tip de câmp în loc
+să suprascrie un câmp populat.
 
 ## Secrete
 

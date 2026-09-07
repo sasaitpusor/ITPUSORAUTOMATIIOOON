@@ -13,6 +13,7 @@ import { evaluateGuard, journalEntry, nextAllowedWindow } from '../n8n/runtime/g
 import { renderTemplate } from '../n8n/runtime/render.mjs';
 import { mapPreferences } from '../n8n/runtime/preferences.mjs';
 import { validateGeneratedContent } from '../n8n/runtime/content.mjs';
+import { buildProvisionPlan } from '../n8n/runtime/provision.mjs';
 import { loadConfig } from './lib/config.mjs';
 
 const config = loadConfig('dor-travel');
@@ -303,6 +304,77 @@ test('SMS-ul generat prea lung e respins', () => {
 test('tokenul nedeclarat în textul generat e respins', () => {
   const r = validateGeneratedContent({ config, piece: { channel: 'email', category: 'inspiratie', text: 'Salut {{nume_hotel_inventat}}' } });
   ok(!r.ok && r.violations.some((v) => v.type === 'unknown_merge_field'), 'token prins');
+});
+
+
+// ─── Planul de provisioning ────────────────────────────────────────────────
+
+const emptyLocation = { customFields: [], tags: [], customValues: [] };
+/** Sub-contul așa cum arată după ce planul dat a fost aplicat integral. */
+const asApplied = (plan) => ({
+  customFields: plan.operations.filter((o) => o.kind === 'custom_field')
+    .map((o) => ({ id: 'f_' + o.label, name: o.body.name, dataType: o.body.dataType, options: o.body.options || [] })),
+  tags: plan.operations.filter((o) => o.kind === 'tag').map((o) => ({ name: o.body.name })),
+  customValues: plan.operations.filter((o) => o.kind === 'custom_value')
+    .map((o) => ({ id: 'v_' + o.label, name: o.body.name, value: o.body.value })),
+});
+
+test('pe un sub-cont gol se creează tot ce cere configul', () => {
+  const plan = buildProvisionPlan({ config, existing: emptyLocation });
+  eq(plan.summary.custom_fields.create, config.custom_fields.length, 'custom fields');
+  ok(plan.summary.tags.create === 82, `tag-uri: ${plan.summary.tags.create}`);
+  eq(plan.summary.conflicts, 0);
+  ok(plan.operations.every((o) => o.path.includes('{locationId}')), 'path-urile lasă locationId de înlocuit');
+});
+
+test('a doua rulare nu mai creează nimic', () => {
+  const first = buildProvisionPlan({ config, existing: emptyLocation });
+  const second = buildProvisionPlan({ config, existing: asApplied(first) });
+  eq([second.summary.to_create, second.summary.to_update], [0, 0]);
+  eq(second.summary.unchanged, first.operations.length, 'toate neschimbate');
+});
+
+test('o destinație nouă în config produce exact două operațiuni', () => {
+  const first = buildProvisionPlan({ config, existing: emptyLocation });
+  const extended = JSON.parse(JSON.stringify(config));
+  extended.taxonomy.axes.destination.values.push({ key: 'maroc', label: 'Maroc' });
+  const plan = buildProvisionPlan({ config: extended, existing: asApplied(first) });
+  // un tag nou + actualizarea opțiunilor câmpului de destinații
+  eq(plan.summary.tags.create, 1, 'tag nou');
+  eq(plan.summary.custom_fields.update, 1, 'opțiunile câmpului actualizate');
+  eq(plan.summary.custom_fields.create, 0);
+});
+
+test('un câmp cu alt tip în GHL e raportat ca conflict, nu suprascris', () => {
+  const existing = { ...emptyLocation, customFields: [{ id: 'x', name: 'Data plecării', dataType: 'TEXT' }] };
+  const plan = buildProvisionPlan({ config, existing });
+  eq(plan.conflicts.length, 1);
+  ok(plan.conflicts[0].detail.includes('DATE'), 'spune ce tip cere configul');
+  ok(!plan.operations.some((o) => o.label === 'Data plecării'), 'nu se atinge de el');
+});
+
+test('o valoare de brand schimbată produce update, nu duplicat', () => {
+  const first = buildProvisionPlan({ config, existing: emptyLocation });
+  const existing = asApplied(first);
+  const agency = existing.customValues.find((v) => v.name === 'agency_name');
+  agency.value = 'Nume vechi';
+  const plan = buildProvisionPlan({ config, existing });
+  eq(plan.summary.custom_values.update, 1);
+  eq(plan.summary.custom_values.create, 0);
+});
+
+test('opțiunile venite din GHL ca obiecte sunt comparate corect', () => {
+  const first = buildProvisionPlan({ config, existing: emptyLocation });
+  const existing = asApplied(first);
+  // GHL returnează uneori picklistOptions ca obiecte, nu ca șiruri.
+  for (const field of existing.customFields) {
+    if (field.options?.length) {
+      field.picklistOptions = field.options.map((value) => ({ value }));
+      delete field.options;
+    }
+  }
+  const plan = buildProvisionPlan({ config, existing });
+  eq(plan.summary.custom_fields.update, 0, 'nicio actualizare falsă');
 });
 
 // ─── Raport ────────────────────────────────────────────────────────────────

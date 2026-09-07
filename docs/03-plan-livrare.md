@@ -9,7 +9,7 @@ Ordinea din secțiunea 16 a brief-ului: nu se construiește tot deodată, fiecar
 |---|---|---|
 | Config multi-client + schemă + documentația parametrilor | `config/` | ✅ |
 | Schema completă de custom fields și tag-uri | `docs/01-*` (generat din config) | ✅ 42 câmpuri, 82 tag-uri |
-| Script de creare în GHL, idempotent | `scripts/provision-ghl.mjs` | ✅ testat în dry-run |
+| Provisioning GHL, idempotent | `scripts/provision-ghl.mjs` + `WF_SETUP_provisioning.json` | ✅ aceeași logică de plan, două rulări posibile |
 | Wrapper reutilizabil GHL API v2 | `n8n/workflows/SW01_*`, `scripts/lib/ghl.mjs` | ✅ |
 | Garda de trimitere (consimțământ, frecvență, ferestre, suprimare, idempotență) | `n8n/runtime/guard.mjs`, `SW02_*` | ✅ 20 teste |
 | Randare merge fields cu fallback | `n8n/runtime/render.mjs` | ✅ 6 teste |
@@ -17,9 +17,12 @@ Ordinea din secțiunea 16 a brief-ului: nu se construiește tot deodată, fiecar
 | Alertare la eșec | `WF_ERR_*` | ✅ |
 | Verificare automată de reutilizabilitate | `scripts/check-n8n.mjs` | ✅ |
 
-**Ce blochează validarea fazei 0:** tokenul GHL (întrebarea 2). Fără el nu se poate rula
-provisioning-ul și nu se poate confirma T0.4 — forma exactă a `customFields` la update, singurul
-punct din sistem nedeterminat de teste.
+**Ce blochează validarea fazei 0:** accesul efectiv la API-ul GHL. Tokenul există, dar rețeaua din
+care se rulează trebuie să ajungă la `services.leadconnectorhq.com`. De aceea provisioning-ul poate
+rula și ca workflow n8n, nu doar ca script — n8n rulează în rețeaua clientului.
+
+Rămâne de confirmat T0.4: forma exactă a `customFields` la update (`{key, field_value}` vs
+`{id, value}`), singurul punct din sistem pe care testele nu-l pot determina singure.
 
 ## Faza 1 — MVP tranzacțional 🔜 următoarea
 
@@ -58,6 +61,7 @@ Dependințe: întrebarea 10 (programul de recomandări e nedefinit în brief).
 npm run check                      # tot: validare + teste + build + verificare workflow-uri
 npm run validate -- dor-travel     # validează configul unui client
 npm run provision -- dor-travel    # dry-run în GHL (--apply ca să scrie)
+                                   # alternativ: workflow-ul WF_SETUP din n8n
 npm run docs -- dor-travel         # regenerează docs/01 din config
 npm run form -- dor-travel         # regenerează formularul de preferințe
 npm run build:n8n                  # regenerează workflow-urile

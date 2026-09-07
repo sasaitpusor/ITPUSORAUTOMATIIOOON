@@ -31,10 +31,19 @@
 
 ## 2. Provisioning în GHL
 
+Două căi, aceeași logică de plan, același rezultat. Alege după cine are acces la API-ul GHL.
+
+**Varianta A — script** (mașina de pe care rulezi ajunge la `services.leadconnectorhq.com`):
+
 - [ ] `export GHL_PIT=...` și `export <LOCATION_ID_ENV>=...` (numele e în config)
 - [ ] `npm run provision -- <client-id>` — dry-run, citește planul
 - [ ] Verifică: numărul de custom fields și tag-uri de creat e cel așteptat
 - [ ] `npm run provision -- <client-id> --apply`
+
+**Varianta B — workflow n8n** (când rețeaua ta blochează API-ul GHL, sau pur și simplu preferi
+interfața): importă `WF_SETUP_provisioning.json`, deschide formularul lui, scrie id-ul clientului,
+alege „Doar planul", verifică raportul, apoi rulează din nou cu „Aplică".
+Presupune n8n deja configurat — vezi pasul 3.
 - [ ] Rezolvă manual eventualele conflicte de tip de câmp (scriptul nu schimbă un `dataType` pe un
       câmp deja populat — ar pierde date)
 - [ ] `npm run docs -- <client-id>` — generează documentația schemei pentru client

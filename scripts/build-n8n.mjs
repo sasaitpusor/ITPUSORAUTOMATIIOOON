@@ -31,14 +31,20 @@ const NOOP = 'n8n-nodes-base.noOp';
 const EXEC_WF = 'n8n-nodes-base.executeWorkflow';
 const EXEC_TRIGGER = 'n8n-nodes-base.executeWorkflowTrigger';
 
-/** Inlinează un modul de runtime într-un node Code. */
-function inline(moduleName) {
-  const src = fs.readFileSync(path.join(RUNTIME_DIR, moduleName), 'utf8');
-  return src
-    .replace(/^export function /gm, 'function ')
-    .replace(/^export const /gm, 'const ')
-    .replace(/^import .*$/gm, '')
-    .trimEnd();
+/**
+ * Inlinează unul sau mai multe module de runtime într-un node Code.
+ * Ordinea contează: un modul care depinde de altul se pune după el, fiindcă
+ * liniile de import se scot (într-un node Code nu există sistem de module).
+ */
+function inline(...moduleNames) {
+  return moduleNames.map((moduleName) => {
+    const src = fs.readFileSync(path.join(RUNTIME_DIR, moduleName), 'utf8');
+    return src
+      .replace(/^export function /gm, 'function ')
+      .replace(/^export const /gm, 'const ')
+      .replace(/^import .*$/gm, '')
+      .trimEnd();
+  }).join('\n\n');
 }
 
 const header = (title, note) =>
@@ -771,6 +777,133 @@ return [{ json: {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// WF_SETUP — Provisioning GHL (custom fields, tag-uri, custom values)
+// ═══════════════════════════════════════════════════════════════════════════
+function buildProvisioning() {
+  const wf = makeWorkflow('WF_SETUP · Provisioning GHL');
+
+  wf.node('Formular de provisioning', 'n8n-nodes-base.formTrigger', 2.2, {
+    path: 'provisioning-ghl',
+    formTitle: 'Provisioning GHL',
+    formDescription: 'Creează în sub-contul GHL custom fields-urile, tag-urile și custom values-urile cerute de configul clientului. Idempotent: ce există deja nu se recreează.',
+    formFields: {
+      values: [
+        { fieldLabel: 'Client', fieldType: 'text', placeholder: 'id-ul clientului, ex. numele-agentiei', requiredField: true },
+        {
+          fieldLabel: 'Mod',
+          fieldType: 'dropdown',
+          fieldOptions: { values: [{ option: 'Doar planul (nu scrie nimic)' }, { option: 'Aplică' }] },
+          requiredField: true,
+        },
+      ],
+    },
+    options: {},
+  }, { notes: 'Client nou = deschizi formularul și scrii id-ul. Niciun node de editat.' });
+
+  wf.node('Citește parametrii', CODE, 2, codeNode(`${header('WF_SETUP · parametri', 'Modul implicit e dry-run: aplicarea se cere explicit.')}
+const form = $input.first().json;
+const clientId = (form.Client || '').trim();
+if (!clientId) throw new Error('WF_SETUP: id-ul clientului lipsește.');
+
+return [{ json: { client_id: clientId, apply: String(form.Mod || '').toLowerCase().startsWith('aplic') } }];`));
+
+  wf.node('Încarcă configul', EXEC_WF, 1.2, executeWorkflowParams('WF_ID_SW00_LOAD_CONFIG'), RETRY);
+
+  // Trei citiri, ca să știm ce există deja. Fără ele planul n-ar fi idempotent.
+  const read = (label, resource, query) => {
+    wf.node(`Cere ${label}`, CODE, 2, codeNode(`${header(`WF_SETUP · citire ${label}`, 'Ce există deja în sub-cont.')}
+const clientId = $('Citește parametrii').first().json.client_id;
+return [{ json: {
+  client_id: clientId,
+  method: 'GET',
+  path: '/locations/{locationId}/${resource}',
+  query: ${JSON.stringify(query || {})},
+} }];`));
+    wf.node(`Citește ${label}`, EXEC_WF, 1.2, executeWorkflowParams('WF_ID_SW01_GHL_API'), RETRY);
+  };
+
+  read('custom fields', 'customFields', { model: 'contact' });
+  read('tag-urile', 'tags');
+  read('custom values', 'customValues');
+
+  wf.node('Construiește planul', CODE, 2, codeNode(`${header('WF_SETUP · plan', 'Aceeași funcție folosită de scripts/provision-ghl.mjs — un singur loc de întreținut.')}
+${inline('derive.mjs', 'provision.mjs')}
+
+// ── glue n8n ──
+const params = $('Citește parametrii').first().json;
+const config = $('Încarcă configul').first().json.config;
+
+const existing = {
+  customFields: $('Citește custom fields').first().json?.data?.customFields || [],
+  tags: $('Citește tag-urile').first().json?.data?.tags || [],
+  customValues: $('Citește custom values').first().json?.data?.customValues || [],
+};
+
+const plan = buildProvisionPlan({ config, existing });
+
+return [{ json: {
+  client_id: params.client_id,
+  apply: params.apply,
+  summary: plan.summary,
+  conflicts: plan.conflicts,
+  operations: plan.operations,
+} }];`));
+
+  wf.node('Aplicăm?', IF, 2.2, { conditions: boolCondition('={{ $json.apply }}'), options: {} });
+
+  wf.node('Desfășoară operațiunile', CODE, 2, codeNode(`${header('WF_SETUP · execuție', 'Un item per operațiune; SW01 le execută secvențial, ca un 429 să nu lase sub-contul pe jumătate provisionat.')}
+const plan = $input.first().json;
+if (!plan.operations.length) return [{ json: { client_id: plan.client_id, nothing_to_do: true } }];
+
+return plan.operations.map((operation) => ({ json: {
+  client_id: plan.client_id,
+  method: operation.method,
+  path: operation.path,
+  body: operation.body,
+  _op: { kind: operation.kind, action: operation.action, label: operation.label },
+} }));`), {}, 1);
+
+  wf.node('Creează în GHL', EXEC_WF, 1.2, { ...executeWorkflowParams('WF_ID_SW01_GHL_API'), mode: 'each' }, RETRY, 1);
+
+  wf.advance();
+  wf.node('Raport', CODE, 2, codeNode(`${header('WF_SETUP · raport', 'Ce s-a făcut, ce a rămas de rezolvat manual.')}
+const plan = $('Construiește planul').first().json;
+const applied = plan.apply ? $input.all().length : 0;
+
+const lines = [
+  plan.apply ? \`Aplicat pe "\${plan.client_id}": \${applied} operațiuni.\` : \`Plan pentru "\${plan.client_id}" (nu s-a scris nimic).\`,
+  \`  de creat:      \${plan.summary.to_create}\`,
+  \`  de actualizat: \${plan.summary.to_update}\`,
+  \`  neschimbate:   \${plan.summary.unchanged}\`,
+  \`  custom fields: +\${plan.summary.custom_fields.create} ~\${plan.summary.custom_fields.update}\`,
+  \`  tag-uri:       +\${plan.summary.tags.create}\`,
+  \`  custom values: +\${plan.summary.custom_values.create} ~\${plan.summary.custom_values.update}\`,
+];
+if (plan.conflicts.length) {
+  lines.push('', \`\${plan.conflicts.length} conflicte de rezolvat manual în GHL:\`);
+  for (const c of plan.conflicts) lines.push(\`  \${c.label} — \${c.detail}\`);
+}
+
+return [{ json: { client_id: plan.client_id, applied_operations: applied, summary: plan.summary, conflicts: plan.conflicts, report: lines.join('\\n') } }];`));
+
+  wf.chain(
+    'Formular de provisioning', 'Citește parametrii', 'Încarcă configul',
+    'Cere custom fields', 'Citește custom fields',
+    'Cere tag-urile', 'Citește tag-urile',
+    'Cere custom values', 'Citește custom values',
+    'Construiește planul', 'Aplicăm?',
+  );
+  wf.connect('Aplicăm?', 'Desfășoară operațiunile', 0);
+  wf.connect('Aplicăm?', 'Raport', 1);
+  wf.chain('Desfășoară operațiunile', 'Creează în GHL', 'Raport');
+
+  return wf.build({
+    description: 'Creează în GHL tot ce cere configul unui client. Idempotent. Alternativa la scripts/provision-ghl.mjs pentru cazul în care rețeaua de unde rulezi scriptul nu are acces la API-ul GHL — logica de plan e aceeași funcție.',
+    tags: ['fundatie', 'setup'],
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 
 const workflows = [
   ['SW00_load_client_config.json', buildLoadConfig(), 'WF_ID_SW00_LOAD_CONFIG'],
@@ -779,6 +912,7 @@ const workflows = [
   ['SW03_send_message.json', buildSendMessage(), 'WF_ID_SW03_SEND_MESSAGE'],
   ['WF00_preferences_intake.json', buildPreferencesIntake(), 'WF_ID_WF00_PREFERENCES'],
   ['WF_ERR_alerting.json', buildErrorWorkflow(), 'WF_ID_WF_ERR_ALERTING'],
+  ['WF_SETUP_provisioning.json', buildProvisioning(), 'WF_ID_WF_SETUP_PROVISIONING'],
 ];
 
 fs.mkdirSync(OUT_DIR, { recursive: true });
