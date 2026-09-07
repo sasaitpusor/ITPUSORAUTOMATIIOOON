@@ -36,15 +36,17 @@ Starter nu are nici variabile de mediu, nici Variables. Tokenul GHL devine o cre
 node, deci nu poate fi ales după `client_id`. E suficient pentru un pilot cu o singură agenție;
 la a doua treci pe Pro și regenerezi — marcajele dispar, nu se editează niciun node.
 
-Ieșirea pentru Starter vine cu `IMPORT-cloud-starter.md`, generat, care listează exact ce marcaj se
+Ieșirea pentru Starter vine cu `cloud-starter/IMPORT.md`, generat, care listează exact ce marcaj se
 completează în ce node.
 
-**Ce e comis în `workflows/` acum: varianta Cloud Starter**, ținta aleasă pentru pilot. `npm run check`
-o regenerează. Ca să treci pe altă țintă, rulează comanda ei și comite rezultatul.
+`npm run build:n8n` le generează pe toate trei, în `workflows/<țintă>/`. Alegi directorul la import;
+nu trebuie să regenerezi nimic ca să schimbi ținta.
+
+Pentru mediul local de învățat, folosește `workflows/self-hosted/` — vezi `docs/08-n8n-local.md`.
 
 ## Import
 
-1. `npm run build:n8n && npm run check:n8n` (sau `:pro` / `:starter`)
+1. `npm run build:n8n && npm run check:n8n` — generează toate cele trei ținte
 2. Importă cele 6 fișiere.
 3. Notează id-ul fiecărui workflow (din URL) în variabilele `WF_ID_*` — vezi `n8n.env.example`.
    Workflow-urile se referă unele la altele prin aceste variabile, nu prin id-uri hardcodate.

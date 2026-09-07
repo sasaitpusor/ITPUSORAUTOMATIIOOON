@@ -20,8 +20,10 @@ config/
   clients/_template.json             punctul de plecare pentru un client nou
 n8n/
   runtime/                           logica de business, testabilă în Node și inlinată în node-uri Code
-  workflows/                         JSON generat, importabil în n8n — fără credențiale, fără literale de client
-  n8n.env.example                    variabilele de mediu necesare
+  workflows/self-hosted/             JSON generat pentru n8n self-hosted sau local ($env)
+  workflows/cloud-pro/               idem, pentru n8n Cloud Pro ($vars) — multi-client
+  workflows/cloud-starter/           idem, pentru Cloud Starter (marcaje + credențială) + IMPORT.md
+docker-compose.local.yml             n8n local cu Docker, pentru învățat și testat
 scripts/                             validare, provisioning GHL, generare docs/formular/workflow-uri, teste
 forms/                               formularul de preferințe, generat din taxonomia clientului
 docs/                                arhitectură, schemă GHL, întrebări deschise, onboarding, testare, KPI
@@ -47,6 +49,7 @@ Nu are dependințe: rulează pe Node 18+ fără `npm install`.
 | [docs/05-plan-testare.md](docs/05-plan-testare.md) | scenarii per flux |
 | [docs/06-kpi-raportare.md](docs/06-kpi-raportare.md) | sursele de date și atribuirea pe flux |
 | [docs/07-generare-continut-claude.md](docs/07-generare-continut-claude.md) | cum se generează conținutul și ce nu are voie să genereze |
+| [docs/08-n8n-local.md](docs/08-n8n-local.md) | mediu local cu Docker, pentru învățat și testat |
 
 ## Reguli nenegociabile, aplicate de cod
 

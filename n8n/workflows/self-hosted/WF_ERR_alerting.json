@@ -1,0 +1,90 @@
+{
+  "name": "WF_ERR · Alertare la eșec",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "96a3f09c94f97beb",
+      "name": "Când un workflow eșuează",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        260,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// WF_ERR · alertă\n// Niciun eșec silențios: fiecare execuție picată produce un mesaj cu context suficient pentru diagnostic.\n// Generat de scripts/build-n8n.mjs — nu edita în n8n, modifică sursa.\n\nconst e = $input.first().json;\nconst wfName = e.workflow?.name || 'necunoscut';\nconst node = e.execution?.lastNodeExecuted || 'necunoscut';\nconst message = e.execution?.error?.message || e.trigger?.error?.message || 'fără mesaj';\nconst url = e.execution?.url || '';\n\n// Contextul de client, când eroarea vine dintr-un flux care îl are.\nconst clientId = e.execution?.error?.context?.client_id || 'necunoscut';\n\nreturn [{ json: {\n  subject: '[n8n] ' + wfName + ' a eșuat — ' + node,\n  text: [\n    'Workflow: ' + wfName,\n    'Node: ' + node,\n    'Client: ' + clientId,\n    'Execuție: ' + (e.execution?.id || '—'),\n    'Moment: ' + new Date().toISOString(),\n    '',\n    'Eroare:',\n    message,\n    '',\n    url,\n  ].join('\\n'),\n  to: $env.ALERT_EMAIL || '',\n} }];"
+      },
+      "id": "cbfd399f8e1a7db7",
+      "name": "Construiește alerta",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        500,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $env.ALERT_FROM_EMAIL }}",
+        "toEmail": "={{ $json.to }}",
+        "subject": "={{ $json.subject }}",
+        "emailFormat": "text",
+        "text": "={{ $json.text }}",
+        "options": {}
+      },
+      "id": "eb51f619ba26bda4",
+      "name": "Trimite alerta",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        740,
+        300
+      ],
+      "notes": "Cere o credențială SMTP în n8n. Vezi checklist-ul de onboarding."
+    }
+  ],
+  "connections": {
+    "Când un workflow eșuează": {
+      "main": [
+        [
+          {
+            "node": "Construiește alerta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Construiește alerta": {
+      "main": [
+        [
+          {
+            "node": "Trimite alerta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "saveExecutionProgress": true
+  },
+  "pinData": {},
+  "tags": [
+    {
+      "name": "fundatie"
+    },
+    {
+      "name": "operare"
+    }
+  ],
+  "meta": {
+    "description": "Workflow de eroare comun. Se setează în Settings → Error Workflow la fiecare workflow din sistem."
+  }
+}

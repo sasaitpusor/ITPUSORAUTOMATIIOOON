@@ -1,0 +1,376 @@
+{
+  "name": "WF00 · Formular preferințe → GHL",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "preferinte/:client_id",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "d2f2b592adb20b05",
+      "name": "Formular trimis",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        260,
+        300
+      ],
+      "webhookId": "preferinte-intake",
+      "notes": "Un singur endpoint pentru toți clienții: client_id vine din URL, nu din node."
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// WF00 · validare\n// Endpoint public: nu are voie să scrie în GHL pe baza a orice primește.\n// Generat de scripts/build-n8n.mjs — nu edita în n8n, modifică sursa.\n\nconst req = $input.first().json;\nconst clientId = req.params?.client_id;\nconst payload = req.body || {};\n\nif (!clientId) throw new Error('WF00: client_id lipsă din URL.');\n\n// Secret partajat, ca formularul să nu poată fi trimis de oricine.\nconst expected = $vars['FORM_SECRET_' + clientId.toUpperCase().replace(/-/g, '_')];\nif (expected && req.headers?.['x-form-secret'] !== expected) {\n  throw new Error('WF00: secret de formular invalid pentru ' + clientId + '.');\n}\n\nreturn [{ json: { client_id: clientId, payload, source: payload.source || req.headers?.referer || 'formular_preferinte' } }];"
+      },
+      "id": "565ab922e2ea724d",
+      "name": "Validează cererea",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        500,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $vars.WF_ID_SW00_LOAD_CONFIG }}"
+        },
+        "mode": "once",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "21112b11449437d9",
+      "name": "Încarcă configul",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        740,
+        300
+      ],
+      "retryOnFail": true,
+      "maxTries": 4,
+      "waitBetweenTries": 2500
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// WF00 · căutare contact\n// Avem nevoie de tag-urile actuale ca să știm ce preferințe au dispărut.\n// Generat de scripts/build-n8n.mjs — nu edita în n8n, modifică sursa.\n\nconst input = $('Validează cererea').first().json;\nconst identifier = input.payload.email || input.payload.phone;\nif (!identifier) throw new Error('WF00: formularul nu conține nici email, nici telefon.');\n\nreturn [{ json: {\n  client_id: input.client_id,\n  method: 'GET',\n  path: '/contacts/',\n  query: { locationId: '{locationId}', query: identifier, limit: 1 },\n} }];"
+      },
+      "id": "a4e3591e1d0570ed",
+      "name": "Caută contactul",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        980,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $vars.WF_ID_SW01_GHL_API }}"
+        },
+        "mode": "once",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "436a7a46b26fa8bb",
+      "name": "Contact existent",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        1220,
+        300
+      ],
+      "retryOnFail": true,
+      "maxTries": 4,
+      "waitBetweenTries": 2500,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// WF00 · mapare preferințe\n// Etichete din formular → chei de axă → tag-uri și custom fields. Fără liste hardcodate.\n// Generat de scripts/build-n8n.mjs — nu edita în n8n, modifică sursa.\n\n/**\n * Traducerea formularului de preferințe în scrieri GHL.\n *\n * Formularul trimite etichetele afișate utilizatorului, nu chei interne. Aici se\n * face maparea etichetă → cheie → tag, folosind exclusiv axele din config: o\n * destinație nouă apare în formular și în tag-uri doar completând configul.\n *\n * Pe axele pentru care formularul trimite o valoare, submisia e autoritară:\n * tag-urile vechi care nu mai apar se scot. Altfel un contact care își schimbă\n * bugetul rămâne în două segmente de buget simultan și primește două comunicări,\n * iar cine șterge o destinație din preferințe continuă să primească oferte pentru ea.\n */\n\nconst norm = (v) => String(v ?? '').trim().toLowerCase();\n\n/** Etichetă sau cheie → cheia canonică a axei. null dacă nu se recunoaște. */\nfunction toAxisKey(axis, input) {\n  const wanted = norm(input);\n  if (!wanted) return null;\n  const hit = axis.values.find((v) => norm(v.key) === wanted || norm(v.label) === wanted);\n  return hit ? hit.key : null;\n}\n\nfunction axisTagsOf(config, contactTags) {\n  const map = {};\n  for (const [axisName, axis] of Object.entries(config.taxonomy.axes)) {\n    map[axisName] = contactTags.filter((t) => norm(t).startsWith(norm(axis.tag_prefix)));\n  }\n  return map;\n}\n\n/**\n * @param {object} args\n * @param {object} args.config\n * @param {object} args.payload   corpul formularului\n * @param {string[]} [args.existingTags]\n * @param {string} [args.source]  de unde vine consimțământul (url formular, import etc.)\n * @param {string} [args.nowIso]\n */\nfunction mapPreferences({ config, payload, existingTags = [], source = 'formular_preferinte', nowIso }) {\n  const now = nowIso || new Date().toISOString();\n  const today = now.slice(0, 10);\n  const warnings = [];\n  const customFields = {};\n  const tagsToAdd = [];\n  const tagsToRemove = [];\n  const current = existingTags.map(String);\n  const currentByAxis = axisTagsOf(config, current);\n\n  for (const [axisName, axis] of Object.entries(config.taxonomy.axes)) {\n    // Formularul poate trimite fie sub numele axei, fie sub cheia câmpului GHL.\n    const raw = payload[axis.field_key] ?? payload[axisName];\n    if (raw === undefined || raw === null || raw === '') continue;\n\n    const inputs = Array.isArray(raw) ? raw : [raw];\n    if (!axis.multi && inputs.length > 1) {\n      warnings.push(`axa \"${axisName}\" acceptă o singură valoare, formularul a trimis ${inputs.length}; se ia prima`);\n    }\n    const considered = axis.multi ? inputs : inputs.slice(0, 1);\n\n    const keys = [];\n    for (const input of considered) {\n      const key = toAxisKey(axis, input);\n      if (key) keys.push(key);\n      else warnings.push(`valoare nerecunoscută pe axa \"${axisName}\": ${JSON.stringify(input)}`);\n    }\n    if (!keys.length) continue;\n\n    const labels = keys.map((k) => axis.values.find((v) => v.key === k).label);\n    customFields[axis.field_key] = axis.multi ? labels : labels[0];\n\n    const wantedTags = keys.map((k) => `${axis.tag_prefix}${k}`);\n    for (const tag of wantedTags) if (!current.some((t) => norm(t) === norm(tag))) tagsToAdd.push(tag);\n\n    // Când formularul trimite o valoare pentru o axă, submisia e autoritară pe\n    // acea axă: tag-urile vechi care nu mai apar se scot. Axele absente din\n    // payload rămân neatinse, ca un formular parțial să nu șteargă preferințe.\n    for (const stale of currentByAxis[axisName]) {\n      if (!wantedTags.some((t) => norm(t) === norm(stale))) tagsToRemove.push(stale);\n    }\n  }\n\n  // Câmpuri simple, fără axă (nume, oraș de reședință, dată naștere…).\n  const plainFields = config.custom_fields.filter((f) => !f.axis).map((f) => f.key);\n  for (const key of plainFields) {\n    if (payload[key] !== undefined && payload[key] !== '') customFields[key] = payload[key];\n  }\n\n  // Consimțământ pe canal: valoarea, data și sursa se scriu împreună — un\n  // consimțământ fără dată și sursă nu e utilizabil la o verificare GDPR.\n  for (const [channel, def] of Object.entries(config.compliance.consent_fields)) {\n    const given = payload[`consent_${channel}`] ?? payload[def.flag];\n    if (given === undefined) continue;\n    const granted = given === true || norm(given) === 'true' || norm(given) === 'da' || norm(given) === 'yes' || given === 1 || norm(given) === '1';\n    customFields[def.flag] = granted;\n    if (def.date) customFields[def.date] = today;\n    if (def.source) customFields[def.source] = source;\n\n    const consentTag = `${config.taxonomy.system_tag_prefixes.consent}${channel}`;\n    const optoutTag = config.compliance.optout_tags[channel];\n    if (granted) {\n      if (!current.some((t) => norm(t) === norm(consentTag))) tagsToAdd.push(consentTag);\n      if (optoutTag && current.some((t) => norm(t) === norm(optoutTag))) tagsToRemove.push(optoutTag);\n    } else {\n      if (current.some((t) => norm(t) === norm(consentTag))) tagsToRemove.push(consentTag);\n      if (optoutTag && !current.some((t) => norm(t) === norm(optoutTag))) tagsToAdd.push(optoutTag);\n    }\n  }\n\n  customFields.data_ultima_interactiune = today;\n\n  const contact = {\n    ...(payload.email ? { email: String(payload.email).trim().toLowerCase() } : {}),\n    ...(payload.phone ? { phone: String(payload.phone).trim() } : {}),\n    ...(payload.first_name ? { firstName: payload.first_name } : {}),\n    ...(payload.last_name ? { lastName: payload.last_name } : {}),\n    ...(payload.city ? { city: payload.city } : {}),\n  };\n\n  if (!contact.email && !contact.phone) {\n    warnings.push('payload fără email și fără telefon — contactul nu poate fi identificat');\n  }\n\n  return {\n    contact,\n    customFields,\n    tagsToAdd: [...new Set(tagsToAdd)],\n    tagsToRemove: [...new Set(tagsToRemove)],\n    warnings,\n    valid: Boolean(contact.email || contact.phone),\n  };\n}\n\n// ── glue n8n ──\nconst input = $('Validează cererea').first().json;\nconst config = $('Încarcă configul').first().json.config;\nconst found = $input.first().json?.data?.contacts?.[0];\n\nconst mapped = mapPreferences({\n  config,\n  payload: input.payload,\n  existingTags: found?.tags || [],\n  source: input.source,\n});\n\nif (!mapped.valid) throw new Error('WF00: ' + mapped.warnings.join('; '));\n\nconst customFieldsArray = Object.entries(mapped.customFields).map(([key, value]) => ({\n  key,\n  field_value: Array.isArray(value) ? value : value,\n}));\n\nreturn [{ json: {\n  client_id: config.client.id,\n  existing_contact_id: found?.id || null,\n  mapped,\n  method: 'POST',\n  path: '/contacts/upsert',\n  body: {\n    ...mapped.contact,\n    customFields: customFieldsArray,\n  },\n} }];"
+      },
+      "id": "34eab9b60d6fd7a9",
+      "name": "Mapează preferințele",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $vars.WF_ID_SW01_GHL_API }}"
+        },
+        "mode": "once",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "7d373c19a9267225",
+      "name": "Salvează contactul",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        1700,
+        300
+      ],
+      "retryOnFail": true,
+      "maxTries": 4,
+      "waitBetweenTries": 2500
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// WF00 · tag-uri\n// Adăugarea și ștergerea tag-urilor nu există în node-ul nativ HighLevel — trec prin SW01.\n// Generat de scripts/build-n8n.mjs — nu edita în n8n, modifică sursa.\n\nconst saved = $input.first().json;\nconst context = $('Mapează preferințele').first().json;\nconst contactId = saved.data?.contact?.id || saved.data?.id || context.existing_contact_id;\nif (!contactId) throw new Error('WF00: nu am obținut id-ul contactului după upsert.');\n\nconst out = [];\nif (context.mapped.tagsToAdd.length) {\n  out.push({ json: { client_id: context.client_id, contact_id: contactId, op: 'add',\n    method: 'POST', path: '/contacts/' + contactId + '/tags', body: { tags: context.mapped.tagsToAdd } } });\n}\nif (context.mapped.tagsToRemove.length) {\n  out.push({ json: { client_id: context.client_id, contact_id: contactId, op: 'remove',\n    method: 'DELETE', path: '/contacts/' + contactId + '/tags', body: { tags: context.mapped.tagsToRemove } } });\n}\nif (!out.length) {\n  out.push({ json: { client_id: context.client_id, contact_id: contactId, op: 'noop',\n    method: 'GET', path: '/contacts/' + contactId } });\n}\nreturn out;"
+      },
+      "id": "bc496e95a7b1d637",
+      "name": "Pregătește tag-urile",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1940,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $vars.WF_ID_SW01_GHL_API }}"
+        },
+        "mode": "each",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "f2ea4eed013a0b25",
+      "name": "Aplică tag-urile",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        2180,
+        300
+      ],
+      "retryOnFail": true,
+      "maxTries": 4,
+      "waitBetweenTries": 2500
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// WF00 · confirmare\n// Fluxul „actualizare preferințe\": email scurt care confirmă ce am înregistrat.\n// Generat de scripts/build-n8n.mjs — nu edita în n8n, modifică sursa.\n\nconst context = $('Mapează preferințele').first().json;\nconst contactId = $('Pregătește tag-urile').first().json.contact_id;\nconst config = $('Încarcă configul').first().json.config;\n\nconst flow = config.flows.preferences_update;\nconst step = flow.steps[0];\n\nreturn [{ json: {\n  client_id: context.client_id,\n  contact: {\n    id: contactId,\n    tags: [...(context.mapped.tagsToAdd || [])],\n    customFields: context.mapped.customFields,\n    firstName: context.mapped.contact.firstName,\n  },\n  request: {\n    flow_id: 'preferences_update',\n    step_id: step.id,\n    channel: step.channel,\n    category: step.category,\n    kind: flow.kind,\n    occurrence_key: new Date().toISOString().slice(0, 10),\n  },\n  template: {\n    subject: 'Am înregistrat preferințele tale',\n    body: 'Bună, {{prenume}}!\\n\\nAm notat ce fel de vacanță ți se potrivește. De acum primești de la noi doar propuneri care se apropie de ce ți-ai dorit, nu tot ce apare.\\n\\nDacă se schimbă ceva, scrie-ne oricând.\\n\\n{{consultant_name}} — {{agency_name}}',\n  },\n} }];"
+      },
+      "id": "2ad71560a17354ca",
+      "name": "Pregătește confirmarea",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2420,
+        300
+      ],
+      "notes": "Textul rămâne aici doar până când workflow-ul de generare conținut (faza 2) încarcă template-urile aprobate în GHL."
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $vars.WF_ID_SW03_SEND_MESSAGE }}"
+        },
+        "mode": "once",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "1394c112830a4c3f",
+      "name": "Trimite confirmarea",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        2660,
+        300
+      ],
+      "retryOnFail": true,
+      "maxTries": 4,
+      "waitBetweenTries": 2500,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ok: true, tags_added: $('Mapează preferințele').first().json.mapped.tagsToAdd.length, warnings: $('Mapează preferințele').first().json.mapped.warnings }) }}",
+        "options": {}
+      },
+      "id": "1829b7f5498bf581",
+      "name": "Răspunde formularului",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        2900,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Formular trimis": {
+      "main": [
+        [
+          {
+            "node": "Validează cererea",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validează cererea": {
+      "main": [
+        [
+          {
+            "node": "Încarcă configul",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Încarcă configul": {
+      "main": [
+        [
+          {
+            "node": "Caută contactul",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Caută contactul": {
+      "main": [
+        [
+          {
+            "node": "Contact existent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Contact existent": {
+      "main": [
+        [
+          {
+            "node": "Mapează preferințele",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mapează preferințele": {
+      "main": [
+        [
+          {
+            "node": "Salvează contactul",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Salvează contactul": {
+      "main": [
+        [
+          {
+            "node": "Pregătește tag-urile",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pregătește tag-urile": {
+      "main": [
+        [
+          {
+            "node": "Aplică tag-urile",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aplică tag-urile": {
+      "main": [
+        [
+          {
+            "node": "Pregătește confirmarea",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pregătește confirmarea": {
+      "main": [
+        [
+          {
+            "node": "Trimite confirmarea",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trimite confirmarea": {
+      "main": [
+        [
+          {
+            "node": "Răspunde formularului",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "saveExecutionProgress": true
+  },
+  "pinData": {},
+  "tags": [
+    {
+      "name": "faza-1"
+    },
+    {
+      "name": "flux"
+    }
+  ],
+  "meta": {
+    "description": "Colectarea și actualizarea preferințelor. Un endpoint pentru toți clienții (client_id în URL), scrie custom fields + tag-uri prin SW01 și confirmă prin SW03."
+  }
+}

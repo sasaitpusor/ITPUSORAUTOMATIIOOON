@@ -20,7 +20,7 @@ import path from 'node:path';
 import { ROOT } from './lib/config.mjs';
 import { makeWorkflow, codeNode, boolCondition, executeWorkflowParams } from './lib/n8n.mjs';
 
-const OUT_DIR = path.join(ROOT, 'n8n', 'workflows');
+const WORKFLOWS_ROOT = path.join(ROOT, 'n8n', 'workflows');
 const RUNTIME_DIR = path.join(ROOT, 'n8n', 'runtime');
 
 /**
@@ -37,17 +37,24 @@ const RUNTIME_DIR = path.join(ROOT, 'n8n', 'runtime');
  *                credențială Header Auth. Consecință: O SINGURĂ agenție per
  *                instanță — nu există cum să alegi credențiala după client.
  */
-const TARGET = (process.argv.find((a) => a.startsWith('--target=')) || '--target=self-hosted').split('=')[1];
 const VALID_TARGETS = ['self-hosted', 'cloud-pro', 'cloud-starter'];
-if (!VALID_TARGETS.includes(TARGET)) {
-  console.error(`Țintă necunoscută "${TARGET}". Alege una din: ${VALID_TARGETS.join(', ')}`);
-  process.exit(2);
+const requested = (process.argv.find((a) => a.startsWith('--target=')) || '--target=all').split('=')[1];
+const TARGETS = requested === 'all' ? VALID_TARGETS : [requested];
+for (const t of TARGETS) {
+  if (!VALID_TARGETS.includes(t)) {
+    console.error(`Țintă necunoscută "${t}". Alege una din: ${VALID_TARGETS.join(', ')} sau "all".`);
+    process.exit(2);
+  }
 }
-const IS_STARTER = TARGET === 'cloud-starter';
+
 const GHL_CREDENTIAL_NAME = 'GHL Private Integration Token';
 
-/** Marcajele pe care le completează omul la import, pe Starter. */
-const PLACEHOLDERS = [];
+// Starea de build, resetată la fiecare țintă.
+let TARGET = TARGETS[0];
+let IS_STARTER = false;
+let PLACEHOLDERS = [];
+let OUT_DIR = path.join(WORKFLOWS_ROOT, TARGET);
+
 const placeholder = (name, what) => {
   if (!PLACEHOLDERS.some((p) => p.name === name)) PLACEHOLDERS.push({ name, what });
   return `__COMPLETEAZA_${name}__`;
@@ -1008,107 +1015,117 @@ return [{ json: { client_id: plan.client_id, applied_operations: applied, summar
 
 // ═══════════════════════════════════════════════════════════════════════════
 
-const workflows = [
-  ['SW00_load_client_config.json', buildLoadConfig(), 'WF_ID_SW00_LOAD_CONFIG'],
-  ['SW01_ghl_api_request.json', buildGhlApi(), 'WF_ID_SW01_GHL_API'],
-  ['SW02_send_guard.json', buildSendGuard(), 'WF_ID_SW02_SEND_GUARD'],
-  ['SW03_send_message.json', buildSendMessage(), 'WF_ID_SW03_SEND_MESSAGE'],
-  ['WF00_preferences_intake.json', buildPreferencesIntake(), 'WF_ID_WF00_PREFERENCES'],
-  ['WF_ERR_alerting.json', buildErrorWorkflow(), 'WF_ID_WF_ERR_ALERTING'],
-  ['WF_SETUP_provisioning.json', buildProvisioning(), 'WF_ID_WF_SETUP_PROVISIONING'],
-];
-
-fs.mkdirSync(OUT_DIR, { recursive: true });
-console.log(`Țintă: ${TARGET}\n`);
-for (const [file, workflow] of workflows) {
-  const emitted = retarget(workflow);
-  fs.writeFileSync(path.join(OUT_DIR, file), `${JSON.stringify(emitted, null, 2)}\n`);
-  console.log(`  ${file.padEnd(34)} ${emitted.nodes.length} noduri`);
+function buildAll() {
+  return [
+    ['SW00_load_client_config.json', buildLoadConfig(), 'WF_ID_SW00_LOAD_CONFIG'],
+    ['SW01_ghl_api_request.json', buildGhlApi(), 'WF_ID_SW01_GHL_API'],
+    ['SW02_send_guard.json', buildSendGuard(), 'WF_ID_SW02_SEND_GUARD'],
+    ['SW03_send_message.json', buildSendMessage(), 'WF_ID_SW03_SEND_MESSAGE'],
+    ['WF00_preferences_intake.json', buildPreferencesIntake(), 'WF_ID_WF00_PREFERENCES'],
+    ['WF_ERR_alerting.json', buildErrorWorkflow(), 'WF_ID_WF_ERR_ALERTING'],
+    ['WF_SETUP_provisioning.json', buildProvisioning(), 'WF_ID_WF_SETUP_PROVISIONING'],
+  ];
 }
 
-const settingNames = workflows.map(([, , envVar]) => envVar);
+for (const target of TARGETS) {
+  TARGET = target;
+  IS_STARTER = target === 'cloud-starter';
+  PLACEHOLDERS = [];
+  OUT_DIR = path.join(WORKFLOWS_ROOT, target);
 
-if (IS_STARTER) {
-  // Pe Starter nu există variabile: se completează manual, o dată pe instanță.
-  const lines = [
-    '# Import în n8n Cloud Starter',
-    '',
-    'Generat de `scripts/build-n8n.mjs --target=cloud-starter`.',
-    '',
-    'Starter nu are nici variabile de mediu, nici Variables (`$vars` e pe Pro). De aceea',
-    'setările de instanță apar în workflow-uri ca marcaje `__COMPLETEAZA_...__` pe care le',
-    'completezi o singură dată, la import.',
-    '',
-    '**Consecință de arhitectură:** pe Starter merge o singură agenție per instanță, fiindcă',
-    'tokenul GHL e o credențială fixă pe node, nu una aleasă după `client_id`. Când adaugi a',
-    'doua agenție, treci pe Pro și regenerezi cu `npm run build:n8n:pro` — marcajele dispar și',
-    'multi-client funcționează fără să atingi vreun node.',
-    '',
-    '## 1. Importă workflow-urile',
-    '',
-    ...workflows.map(([file]) => `- [ ] \`${file}\``),
-    '',
-    '## 2. Credențiale',
-    '',
-    `- [ ] Header Auth, numită exact **${GHL_CREDENTIAL_NAME}** — Name: \`Authorization\`, Value: \`Bearer pit-...\``,
-    '- [ ] SMTP, pentru workflow-ul de alertare',
-    '- [ ] Google Sheets, pentru raportare',
-    '',
-    '## 3. Completează marcajele',
-    '',
-    'Caută fiecare marcaj în workflow-ul indicat și înlocuiește-l cu valoarea reală.',
-    '',
-    '| Marcaj | Ce pui în loc |',
-    '|---|---|',
-    ...PLACEHOLDERS.map((p) => `| \`__COMPLETEAZA_${p.name}__\` | ${p.what} |`),
-    '',
-    'Id-urile de workflow se iau din URL după import: `.../workflow/<ID>`.',
-    '',
-    '## 4. Error workflow',
-    '',
-    '- [ ] La fiecare workflow: Settings → Error Workflow → `WF_ERR · Alertare la eșec`',
-    '',
-    '## 5. Provisioning GHL',
-    '',
-    '- [ ] Deschide formularul workflow-ului `WF_SETUP · Provisioning GHL`',
-    '- [ ] Scrie id-ul clientului, alege „Doar planul", verifică raportul',
-    '- [ ] Rulează din nou cu „Aplică"',
-    '',
-    '## Atenție la cota de execuții',
-    '',
-    'Starter are 2.500 execuții/lună și **se oprește** când o atingi, nu te avertizează.',
-    'Urmărește-o în primele săptămâni: fluxurile tranzacționale consumă puțin, campaniile',
-    'trimise per contact consumă mult.',
-    '',
-  ];
-  fs.writeFileSync(path.join(ROOT, 'n8n', 'IMPORT-cloud-starter.md'), lines.join('\n'));
-  console.log(`  IMPORT-cloud-starter.md            ${PLACEHOLDERS.length} marcaje de completat`);
-} else {
-  const isVars = TARGET === 'cloud-pro';
-  const label = isVars ? 'Variables ($vars)' : 'variabile de mediu ($env)';
-  const example = [
-    `# ${isVars ? 'Variables n8n Cloud Pro' : 'Variabile de mediu n8n'} — se completează o dată pe instanță + o dată pe client.`,
-    '# Niciun secret nu intră în JSON-urile de workflow.',
-    isVars ? '# Se adaugă din interfață: Settings → Variables.' : '# Necesită N8N_BLOCK_ENV_ACCESS_IN_NODE=false.',
-    '',
-    '# ── Pe instanță ──',
-    '# Directorul de unde n8n descarcă config/clients/<client-id>.json',
-    'CONFIG_BASE_URL=https://exemplu.intern/config/clients',
-    'CONFIG_CACHE_TTL_SECONDS=300',
-    'ALERT_EMAIL=',
-    'ALERT_FROM_EMAIL=',
-    'KPI_SPREADSHEET_ID=',
-    '',
-    '# Id-urile workflow-urilor după import (din URL: .../workflow/<ID>).',
-    ...settingNames.map((name) => `${name}=`),
-    '',
-    '# ── Pe client (sufix = client_id cu majuscule și _ în loc de -) ──',
-    '# Numele exacte vin din config: integrations.ghl.token_env și location_id_env.',
-    'GHL_PIT_<CLIENT>=',
-    'GHL_LOCATION_ID_<CLIENT>=',
-    'FORM_SECRET_<CLIENT>=',
-    '',
-  ].join('\n');
-  fs.writeFileSync(path.join(ROOT, 'n8n', 'n8n.env.example'), example);
-  console.log(`  n8n.env.example                    ${settingNames.length} id-uri de workflow (${label})`);
+  const workflows = buildAll();
+  const settingNames = workflows.map(([, , envVar]) => envVar);
+
+  fs.mkdirSync(OUT_DIR, { recursive: true });
+  console.log(`\n── ${target} ──`);
+  for (const [file, workflow] of workflows) {
+    const emitted = retarget(workflow);
+    fs.writeFileSync(path.join(OUT_DIR, file), `${JSON.stringify(emitted, null, 2)}\n`);
+    console.log(`  ${file.padEnd(34)} ${emitted.nodes.length} noduri`);
+  }
+
+  if (IS_STARTER) {
+    // Pe Starter nu există variabile: se completează manual, o dată pe instanță.
+    const lines = [
+      '# Import în n8n Cloud Starter',
+      '',
+      'Generat de `npm run build:n8n`. Nu edita manual.',
+      '',
+      'Starter nu are nici variabile de mediu, nici Variables (`$vars` e pe Pro). De aceea',
+      'setările de instanță apar în workflow-uri ca marcaje `__COMPLETEAZA_...__` pe care le',
+      'completezi o singură dată, la import.',
+      '',
+      '**Consecință de arhitectură:** pe Starter merge o singură agenție per instanță, fiindcă',
+      'tokenul GHL e o credențială fixă pe node, nu una aleasă după `client_id`. Când adaugi a',
+      'doua agenție, treci pe Pro și folosești workflow-urile din `../cloud-pro/` — marcajele',
+      'dispar și multi-client funcționează fără să atingi vreun node.',
+      '',
+      '## 1. Importă workflow-urile',
+      '',
+      ...workflows.map(([file]) => `- [ ] \`${file}\``),
+      '',
+      '## 2. Credențiale',
+      '',
+      `- [ ] Header Auth, numită exact **${GHL_CREDENTIAL_NAME}** — Name: \`Authorization\`, Value: \`Bearer pit-...\``,
+      '- [ ] SMTP, pentru workflow-ul de alertare',
+      '- [ ] Google Sheets, pentru raportare',
+      '',
+      '## 3. Completează marcajele',
+      '',
+      'Caută fiecare marcaj în workflow-ul indicat și înlocuiește-l cu valoarea reală.',
+      '',
+      '| Marcaj | Ce pui în loc |',
+      '|---|---|',
+      ...PLACEHOLDERS.map((p) => `| \`__COMPLETEAZA_${p.name}__\` | ${p.what} |`),
+      '',
+      'Id-urile de workflow se iau din URL după import: `.../workflow/<ID>`.',
+      '',
+      '## 4. Error workflow',
+      '',
+      '- [ ] La fiecare workflow: Settings → Error Workflow → `WF_ERR · Alertare la eșec`',
+      '',
+      '## 5. Provisioning GHL',
+      '',
+      '- [ ] Deschide formularul workflow-ului `WF_SETUP · Provisioning GHL`',
+      '- [ ] Scrie id-ul clientului, alege „Doar planul", verifică raportul',
+      '- [ ] Rulează din nou cu „Aplică"',
+      '',
+      '## Atenție la cota de execuții',
+      '',
+      'Starter are 2.500 execuții/lună și **se oprește** când o atingi, nu te avertizează.',
+      'Urmărește-o în primele săptămâni: fluxurile tranzacționale consumă puțin, campaniile',
+      'trimise per contact consumă mult.',
+      '',
+    ];
+    fs.writeFileSync(path.join(OUT_DIR, 'IMPORT.md'), lines.join('\n'));
+    console.log(`  IMPORT.md                          ${PLACEHOLDERS.length} marcaje de completat`);
+  } else {
+    const isVars = target === 'cloud-pro';
+    const example = [
+      `# ${isVars ? 'Variables n8n Cloud Pro (Settings → Variables)' : 'Variabile de mediu n8n'}`,
+      '# Se completează o dată pe instanță + o dată pe client.',
+      '# Niciun secret nu intră în JSON-urile de workflow.',
+      isVars ? '' : '# Necesită N8N_BLOCK_ENV_ACCESS_IN_NODE=false.',
+      '',
+      '# ── Pe instanță ──',
+      '# De unde citește n8n config/clients/<client-id>.json',
+      'CONFIG_BASE_URL=',
+      'CONFIG_CACHE_TTL_SECONDS=300',
+      'ALERT_EMAIL=',
+      'ALERT_FROM_EMAIL=',
+      'KPI_SPREADSHEET_ID=',
+      '',
+      '# Id-urile workflow-urilor după import (din URL: .../workflow/<ID>).',
+      ...settingNames.map((name) => `${name}=`),
+      '',
+      '# ── Pe client (sufix = client_id cu majuscule și _ în loc de -) ──',
+      '# Numele exacte vin din config: integrations.ghl.token_env și location_id_env.',
+      'GHL_PIT_<CLIENT>=',
+      'GHL_LOCATION_ID_<CLIENT>=',
+      'FORM_SECRET_<CLIENT>=',
+      '',
+    ].join('\n');
+    fs.writeFileSync(path.join(OUT_DIR, 'SETTINGS.example'), example);
+    console.log(`  SETTINGS.example                   ${settingNames.length} id-uri de workflow`);
+  }
 }

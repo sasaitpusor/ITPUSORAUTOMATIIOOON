@@ -18,7 +18,7 @@ import path from 'node:path';
 import vm from 'node:vm';
 import { ROOT, loadConfig, listClientIds, deriveAxisTags } from './lib/config.mjs';
 
-const WF_DIR = path.join(ROOT, 'n8n', 'workflows');
+const WORKFLOWS_ROOT = path.join(ROOT, 'n8n', 'workflows');
 const TRIGGER_TYPES = /(Trigger|webhook)$/i;
 
 const SECRET_PATTERNS = [
@@ -57,110 +57,113 @@ function clientLiterals() {
 
 const literals = clientLiterals();
 const problems = [];
-const files = fs.readdirSync(WF_DIR).filter((f) => f.endsWith('.json')).sort();
 
-if (!files.length) {
+const targets = fs.existsSync(WORKFLOWS_ROOT)
+  ? fs.readdirSync(WORKFLOWS_ROOT).filter((d) => fs.statSync(path.join(WORKFLOWS_ROOT, d)).isDirectory()).sort()
+  : [];
+
+if (!targets.length) {
   console.error('Niciun workflow în n8n/workflows. Rulează întâi `npm run build:n8n`.');
   process.exit(1);
 }
 
-for (const file of files) {
-  const fail = (msg) => problems.push(`${file}: ${msg}`);
-  const raw = fs.readFileSync(path.join(WF_DIR, file), 'utf8');
+for (const target of targets) {
+  const dir = path.join(WORKFLOWS_ROOT, target);
+  const files = fs.readdirSync(dir).filter((f) => f.endsWith('.json')).sort();
+  const rawAll = files.map((f) => fs.readFileSync(path.join(dir, f), 'utf8')).join('\n');
+  const detected = /\$vars[.[]/.test(rawAll) ? 'cloud-pro'
+    : /__COMPLETEAZA_\w+__/.test(rawAll) ? 'cloud-starter'
+      : 'self-hosted';
+  const placeholders = [...new Set([...rawAll.matchAll(/__COMPLETEAZA_(\w+)__/g)].map((m) => m[1]))];
 
-  let wf;
-  try { wf = JSON.parse(raw); } catch (e) { fail(`JSON invalid — ${e.message}`); continue; }
+  console.log(`\n── ${target} ──`);
+  if (detected !== target) {
+    problems.push(`${target}: conține expresii de tip "${detected}" — build greșit sau director mutat`);
+  }
 
-  const names = new Set(wf.nodes.map((n) => n.name));
-  if (names.size !== wf.nodes.length) fail('nume de noduri duplicate');
+  for (const file of files) {
+    const local = [];
+    const fail = (msg) => { local.push(msg); problems.push(`${target}/${file}: ${msg}`); };
+    const raw = fs.readFileSync(path.join(dir, file), 'utf8');
 
-  const ids = new Set(wf.nodes.map((n) => n.id));
-  if (ids.size !== wf.nodes.length) fail('id-uri de noduri duplicate');
+    let wf;
+    try { wf = JSON.parse(raw); } catch (e) {
+      fail(`JSON invalid — ${e.message}`);
+      console.log(`  ✗ ${file}`);
+      continue;
+    }
 
-  // Conexiuni către noduri care există
-  const reached = new Set();
-  for (const [from, conn] of Object.entries(wf.connections)) {
-    if (!names.has(from)) fail(`conexiune pornind din nodul inexistent "${from}"`);
-    for (const output of conn.main || []) {
-      for (const link of output || []) {
-        if (!names.has(link.node)) fail(`"${from}" trimite către nodul inexistent "${link.node}"`);
-        reached.add(link.node);
+    const names = new Set(wf.nodes.map((n) => n.name));
+    if (names.size !== wf.nodes.length) fail('nume de noduri duplicate');
+    const ids = new Set(wf.nodes.map((n) => n.id));
+    if (ids.size !== wf.nodes.length) fail('id-uri de noduri duplicate');
+
+    // Conexiuni către noduri care există
+    const reached = new Set();
+    for (const [from, conn] of Object.entries(wf.connections)) {
+      if (!names.has(from)) fail(`conexiune pornind din nodul inexistent "${from}"`);
+      for (const output of conn.main || []) {
+        for (const link of output || []) {
+          if (!names.has(link.node)) fail(`"${from}" trimite către nodul inexistent "${link.node}"`);
+          reached.add(link.node);
+        }
       }
     }
-  }
 
-  // Noduri orfane
-  for (const node of wf.nodes) {
-    const isTrigger = TRIGGER_TYPES.test(node.type);
-    if (!isTrigger && !reached.has(node.name) && !node.disabled) {
-      fail(`nodul "${node.name}" nu e conectat la nimic`);
+    // Noduri orfane
+    for (const node of wf.nodes) {
+      if (!TRIGGER_TYPES.test(node.type) && !reached.has(node.name) && !node.disabled) {
+        fail(`nodul "${node.name}" nu e conectat la nimic`);
+      }
     }
-  }
 
-  // Cod JS valid în node-urile Code
-  for (const node of wf.nodes.filter((n) => n.type === 'n8n-nodes-base.code')) {
-    const code = node.parameters?.jsCode;
-    if (!code) { fail(`node Code fără cod: "${node.name}"`); continue; }
-    try {
-      new vm.Script(`(async () => {\n${code}\n})`);
-    } catch (e) {
-      fail(`JS invalid în "${node.name}" — ${e.message}`);
+    // Cod JS valid în node-urile Code — n8n îl acceptă la import și crapă abia la rulare
+    for (const node of wf.nodes.filter((n) => n.type === 'n8n-nodes-base.code')) {
+      const code = node.parameters?.jsCode;
+      if (!code) { fail(`node Code fără cod: "${node.name}"`); continue; }
+      try { new vm.Script(`(async () => {\n${code}\n})`); }
+      catch (e) { fail(`JS invalid în "${node.name}" — ${e.message}`); }
     }
-  }
 
-  // Secrete
-  for (const { name, re } of SECRET_PATTERNS) {
-    if (re.test(raw)) fail(`conține ce pare a fi un ${name}`);
-  }
-  for (const node of wf.nodes) {
-    if (node.credentials) {
-      for (const [type, cred] of Object.entries(node.credentials)) {
+    // Secrete
+    for (const { name, re } of SECRET_PATTERNS) {
+      if (re.test(raw)) fail(`conține ce pare a fi un ${name}`);
+    }
+    for (const node of wf.nodes) {
+      for (const [type, cred] of Object.entries(node.credentials || {})) {
         if (cred && typeof cred === 'object' && Object.keys(cred).some((k) => !['id', 'name'].includes(k))) {
           fail(`nodul "${node.name}" are date de credențial inline (${type})`);
         }
       }
     }
-  }
 
-  // Coerența țintei: o ieșire pentru cloud nu are voie să mai conțină $env, și
-  // invers — altfel workflow-ul se importă curat și cade abia la prima rulare.
-  const usesEnv = /\$env[.[]/.test(raw);
-  const usesVars = /\$vars[.[]/.test(raw);
-  const hasPlaceholders = /__COMPLETEAZA_\w+__/.test(raw);
-  if (usesEnv && (usesVars || hasPlaceholders)) fail('amestecă $env cu $vars sau cu marcaje — build incomplet');
-  if (hasPlaceholders && usesVars) fail('amestecă marcaje de completat cu $vars — build incomplet');
+    // Coerența ținței în interiorul aceluiași fișier
+    const usesEnv = /\$env[.[]/.test(raw);
+    const usesVars = /\$vars[.[]/.test(raw);
+    const hasPlaceholders = /__COMPLETEAZA_\w+__/.test(raw);
+    if (usesEnv && (usesVars || hasPlaceholders)) fail('amestecă $env cu $vars sau cu marcaje — build incomplet');
+    if (hasPlaceholders && usesVars) fail('amestecă marcaje cu $vars — build incomplet');
 
-  // Reutilizabilitate: niciun literal de client
-  const lower = raw.toLowerCase();
-  for (const [literal, why] of literals) {
-    // Se caută ca text delimitat, ca „Solo" sau „Familie" să nu dea fals pozitiv
-    // în mijlocul unui cuvânt.
-    const escaped = literal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    if (new RegExp(`(^|[^a-z0-9_-])${escaped}([^a-z0-9_-]|$)`).test(lower)) {
-      fail(`conține literalul "${literal}" (${why}) — mută-l în config`);
+    // Reutilizabilitate: niciun literal de client
+    const lower = raw.toLowerCase();
+    for (const [literal, why] of literals) {
+      const escaped = literal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      if (new RegExp(`(^|[^a-z0-9_-])${escaped}([^a-z0-9_-]|$)`).test(lower)) {
+        fail(`conține literalul "${literal}" (${why}) — mută-l în config`);
+      }
     }
+
+    console.log(`  ${local.length ? '✗' : '✓'} ${file.padEnd(34)} ${String(wf.nodes.length).padStart(2)} noduri`);
+    for (const p of local) console.log(`      ${p}`);
   }
-}
 
-const rawAll = files.map((f) => fs.readFileSync(path.join(WF_DIR, f), 'utf8')).join('\n');
-const detectedTarget = /\$vars[.[]/.test(rawAll) ? 'cloud-pro'
-  : /__COMPLETEAZA_\w+__/.test(rawAll) ? 'cloud-starter'
-    : 'self-hosted';
-const placeholders = [...new Set([...rawAll.matchAll(/__COMPLETEAZA_(\w+)__/g)].map((m) => m[1]))];
-
-console.log(`\nVerificate ${files.length} workflow-uri (țintă: ${detectedTarget}):`);
-for (const file of files) {
-  const wf = JSON.parse(fs.readFileSync(path.join(WF_DIR, file), 'utf8'));
-  const mine = problems.filter((p) => p.startsWith(`${file}:`));
-  console.log(`  ${mine.length ? '✗' : '✓'} ${file.padEnd(34)} ${String(wf.nodes.length).padStart(2)} noduri`);
-  for (const p of mine) console.log(`      ${p.slice(file.length + 2)}`);
+  if (placeholders.length) {
+    console.log(`  ${placeholders.length} marcaje de completat la import — vezi ${target}/IMPORT.md`);
+  }
 }
 
 if (problems.length) {
   console.log(`\n${problems.length} probleme.`);
   process.exit(1);
 }
-console.log(`\n✓ structură validă, fără secrete, fără literale de client (${literals.size} literale verificate)`);
-if (placeholders.length) {
-  console.log(`  ${placeholders.length} marcaje de completat la import — vezi n8n/IMPORT-cloud-starter.md`);
-}
+console.log(`\n✓ ${targets.length} ținte: structură validă, fără secrete, fără literale de client (${literals.size} literale verificate)`);

@@ -7,3 +7,6 @@ content/exports/*.csv
 content/exports/*.json
 !content/exports/.gitkeep
 .DS_Store
+
+# mediu local
+.env.local

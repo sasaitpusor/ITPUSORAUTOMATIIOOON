@@ -1,0 +1,473 @@
+{
+  "name": "WF_SETUP · Provisioning GHL",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "provisioning-ghl",
+        "formTitle": "Provisioning GHL",
+        "formDescription": "Creează în sub-contul GHL custom fields-urile, tag-urile și custom values-urile cerute de configul clientului. Idempotent: ce există deja nu se recreează.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Client",
+              "fieldType": "text",
+              "placeholder": "id-ul clientului, ex. numele-agentiei",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Mod",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Doar planul (nu scrie nimic)"
+                  },
+                  {
+                    "option": "Aplică"
+                  }
+                ]
+              },
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "7ed146fd60200738",
+      "name": "Formular de provisioning",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.2,
+      "position": [
+        260,
+        300
+      ],
+      "notes": "Client nou = deschizi formularul și scrii id-ul. Niciun node de editat."
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// WF_SETUP · parametri\n// Modul implicit e dry-run: aplicarea se cere explicit.\n// Generat de scripts/build-n8n.mjs — nu edita în n8n, modifică sursa.\n\nconst form = $input.first().json;\nconst clientId = (form.Client || '').trim();\nif (!clientId) throw new Error('WF_SETUP: id-ul clientului lipsește.');\n\nreturn [{ json: { client_id: clientId, apply: String(form.Mod || '').toLowerCase().startsWith('aplic') } }];"
+      },
+      "id": "cab8d04171c7c9ac",
+      "name": "Citește parametrii",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        500,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $env.WF_ID_SW00_LOAD_CONFIG }}"
+        },
+        "mode": "once",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "bdaaeb1e5b666d5d",
+      "name": "Încarcă configul",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        740,
+        300
+      ],
+      "retryOnFail": true,
+      "maxTries": 4,
+      "waitBetweenTries": 2500
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// WF_SETUP · citire custom fields\n// Ce există deja în sub-cont.\n// Generat de scripts/build-n8n.mjs — nu edita în n8n, modifică sursa.\n\nconst clientId = $('Citește parametrii').first().json.client_id;\nreturn [{ json: {\n  client_id: clientId,\n  method: 'GET',\n  path: '/locations/{locationId}/customFields',\n  query: {\"model\":\"contact\"},\n} }];"
+      },
+      "id": "af969d90d2cb24eb",
+      "name": "Cere custom fields",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        980,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $env.WF_ID_SW01_GHL_API }}"
+        },
+        "mode": "once",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "eacbb5346de8d532",
+      "name": "Citește custom fields",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        1220,
+        300
+      ],
+      "retryOnFail": true,
+      "maxTries": 4,
+      "waitBetweenTries": 2500
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// WF_SETUP · citire tag-urile\n// Ce există deja în sub-cont.\n// Generat de scripts/build-n8n.mjs — nu edita în n8n, modifică sursa.\n\nconst clientId = $('Citește parametrii').first().json.client_id;\nreturn [{ json: {\n  client_id: clientId,\n  method: 'GET',\n  path: '/locations/{locationId}/tags',\n  query: {},\n} }];"
+      },
+      "id": "6a6d5f7d95f51af4",
+      "name": "Cere tag-urile",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $env.WF_ID_SW01_GHL_API }}"
+        },
+        "mode": "once",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "fbb76748358d9464",
+      "name": "Citește tag-urile",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        1700,
+        300
+      ],
+      "retryOnFail": true,
+      "maxTries": 4,
+      "waitBetweenTries": 2500
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// WF_SETUP · citire custom values\n// Ce există deja în sub-cont.\n// Generat de scripts/build-n8n.mjs — nu edita în n8n, modifică sursa.\n\nconst clientId = $('Citește parametrii').first().json.client_id;\nreturn [{ json: {\n  client_id: clientId,\n  method: 'GET',\n  path: '/locations/{locationId}/customValues',\n  query: {},\n} }];"
+      },
+      "id": "f2acd57cac89ff5e",
+      "name": "Cere custom values",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1940,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $env.WF_ID_SW01_GHL_API }}"
+        },
+        "mode": "once",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "9a4d776dff2ba93c",
+      "name": "Citește custom values",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        2180,
+        300
+      ],
+      "retryOnFail": true,
+      "maxTries": 4,
+      "waitBetweenTries": 2500
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// WF_SETUP · plan\n// Aceeași funcție folosită de scripts/provision-ghl.mjs — un singur loc de întreținut.\n// Generat de scripts/build-n8n.mjs — nu edita în n8n, modifică sursa.\n\n/**\n * Derivările din config: tag-uri, custom fields cu opțiuni, custom values.\n *\n * Funcții pure, fără I/O, ca aceeași logică să ruleze și în scripturi (Node) și\n * într-un node Code din n8n. Sursa unică: dacă scriptul și workflow-ul ar calcula\n * separat lista de tag-uri, ar diverge exact când doare — la al doilea client.\n */\n\n/** Toate tag-urile derivate din axele de taxonomie. */\nfunction deriveAxisTags(config) {\n  const out = [];\n  for (const [axisName, axis] of Object.entries(config.taxonomy.axes)) {\n    for (const value of axis.values) {\n      out.push({ tag: `${axis.tag_prefix}${value.key}`, axis: axisName, key: value.key, label: value.label });\n    }\n  }\n  return out;\n}\n\n/** Tag-urile de sistem: consimțământ, opt-out, stare de flux, ciclu de viață. */\nfunction deriveSystemTags(config) {\n  const p = config.taxonomy.system_tag_prefixes;\n  const out = [];\n  for (const channel of Object.keys(config.compliance.consent_fields)) {\n    out.push({ tag: `${p.consent}${channel}`, axis: '_consent', key: channel, label: `Consimțământ ${channel}` });\n  }\n  for (const [channel, tag] of Object.entries(config.compliance.optout_tags)) {\n    out.push({ tag, axis: '_optout', key: channel, label: `Opt-out ${channel}` });\n  }\n  for (const flowId of Object.keys(config.flows)) {\n    out.push({ tag: `${p.flow_state}${flowId}`, axis: '_flow_state', key: flowId, label: `În fluxul ${flowId}` });\n  }\n  for (const lifecycle of ['import', 'lead', 'client', 'client_fidel', 'inactiv']) {\n    out.push({ tag: `${p.lifecycle}${lifecycle}`, axis: '_lifecycle', key: lifecycle, label: `Ciclu de viață: ${lifecycle}` });\n  }\n  return out;\n}\n\nfunction deriveAllTags(config) {\n  return [...deriveAxisTags(config), ...deriveSystemTags(config)];\n}\n\n/**\n * Custom fields cu opțiunile completate din axa asociată.\n * Opțiunile nu se scriu de două ori în config: axa e sursa unică.\n */\nfunction deriveCustomFields(config) {\n  return config.custom_fields.map((field) => {\n    if (!field.axis) return { ...field, options: field.options || [] };\n    const axis = config.taxonomy.axes[field.axis];\n    if (!axis) throw new Error(`custom_field \"${field.key}\" trimite la axa inexistentă \"${field.axis}\"`);\n    return { ...field, options: axis.values.map((v) => v.label) };\n  });\n}\n\nfunction resolvePath(obj, dotted) {\n  return dotted.split('.').reduce((acc, key) => (acc == null ? undefined : acc[key]), obj);\n}\n\n/** Custom values GHL, cu valorile rezolvate din config. */\nfunction deriveCustomValues(config) {\n  return (config.custom_values || []).map(({ key, from }) => {\n    const value = resolvePath(config, from);\n    return { key, from, value: value === undefined ? null : String(value) };\n  });\n}\n\n/**\n * Celulele de conținut de generat: flux × variantă de text × canal.\n *\n * Distincția care ține volumul sub control: `segmented_by` spune CINE primește\n * (filtru de audiență), `content_varies_by` spune pe ce axe se scrie text DIFERIT.\n * Fără separarea asta, cele 5 axe cerute pentru ofertele personalizate produc\n * peste 10.000 de texte de revizuit uman.\n */\nfunction deriveContentCells(config) {\n  const cells = [];\n  for (const [flowId, flow] of Object.entries(config.flows)) {\n    if (!flow.enabled) continue;\n    const varyBy = flow.content_varies_by || [];\n    const axes = varyBy.map((name) => {\n      const axis = config.taxonomy.axes[name];\n      if (!axis) throw new Error(`flow \"${flowId}\".content_varies_by trimite la axa inexistentă \"${name}\"`);\n      return { name, values: axis.values };\n    });\n\n    let combos = [{}];\n    for (const axis of axes) {\n      combos = combos.flatMap((combo) => axis.values.map((v) => ({ ...combo, [axis.name]: v.key })));\n    }\n\n    for (const step of flow.steps) {\n      if (step.channel === 'task') continue;\n      for (const segment of combos) {\n        cells.push({\n          flow_id: flowId, step_id: step.id, channel: step.channel,\n          category: step.category, template: step.template, segment,\n        });\n      }\n    }\n  }\n  return cells;\n}\n\n/**\n * Planul de provisioning GHL: ce trebuie creat, ce actualizat, ce e deja la zi.\n *\n * Funcție pură, folosită de DOUĂ rulări diferite ale aceleiași logici:\n *  - scripts/provision-ghl.mjs, când ai acces direct la API-ul GHL;\n *  - workflow-ul „WF_SETUP · Provisioning GHL\", când n8n e cel care ajunge la GHL\n *    (ex. rețeaua de unde rulezi scriptul nu are voie la leadconnectorhq.com).\n *\n * Aceeași funcție în ambele = același rezultat. Idempotentă prin construcție:\n * compară ce cere configul cu ce există deja și emite doar diferența.\n */\n\n\n\nconst norm = (s) => String(s ?? '').trim().toLowerCase();\n\n/**\n * @param {object} args\n * @param {object} args.config\n * @param {object} args.existing\n * @param {Array} args.existing.customFields  ce a returnat GET /locations/{id}/customFields\n * @param {Array} args.existing.tags\n * @param {Array} args.existing.customValues\n * @returns {{operations: Array, summary: object, conflicts: Array}}\n */\nfunction buildProvisionPlan({ config, existing }) {\n  const operations = [];\n  const conflicts = [];\n  const skipped = [];\n  const locationPath = '/locations/{locationId}';\n\n  // ── Custom fields ──\n  const wantedFields = deriveCustomFields(config);\n  const fieldsByName = new Map((existing.customFields || []).map((f) => [norm(f.name), f]));\n\n  for (const field of wantedFields) {\n    const current = fieldsByName.get(norm(field.name));\n    const body = {\n      name: field.name,\n      dataType: field.dataType,\n      ...(field.options?.length ? { options: field.options } : {}),\n    };\n\n    if (!current) {\n      operations.push({\n        kind: 'custom_field', action: 'create', label: field.name,\n        detail: `${field.dataType}${field.options?.length ? ` · ${field.options.length} opțiuni` : ''}`,\n        method: 'POST', path: `${locationPath}/customFields`, body: { ...body, model: 'contact' },\n      });\n      continue;\n    }\n\n    // Tipul unui câmp deja populat nu se schimbă automat: ar pierde date.\n    if (norm(current.dataType) !== norm(field.dataType)) {\n      conflicts.push({\n        kind: 'custom_field', label: field.name,\n        detail: `în GHL e ${current.dataType}, configul cere ${field.dataType} — rezolvă manual`,\n      });\n      continue;\n    }\n\n    const currentOptions = (current.picklistOptions || current.options || [])\n      .map((o) => norm(typeof o === 'string' ? o : (o?.value ?? o?.name ?? o?.label)))\n      .sort();\n    const wantedOptions = (field.options || []).map(norm).sort();\n\n    if (wantedOptions.length && JSON.stringify(currentOptions) !== JSON.stringify(wantedOptions)) {\n      operations.push({\n        kind: 'custom_field', action: 'update', label: field.name,\n        detail: `opțiuni: ${currentOptions.length} → ${wantedOptions.length}`,\n        method: 'PUT', path: `${locationPath}/customFields/${current.id}`, body,\n      });\n    } else {\n      skipped.push({ kind: 'custom_field', label: field.name });\n    }\n  }\n\n  // ── Tag-uri ──\n  const wantedTags = deriveAllTags(config);\n  const haveTags = new Set((existing.tags || []).map((t) => norm(t.name)));\n\n  for (const tag of wantedTags) {\n    if (haveTags.has(norm(tag.tag))) {\n      skipped.push({ kind: 'tag', label: tag.tag });\n      continue;\n    }\n    operations.push({\n      kind: 'tag', action: 'create', label: tag.tag, detail: tag.label,\n      method: 'POST', path: `${locationPath}/tags`, body: { name: tag.tag },\n    });\n  }\n\n  // ── Custom values ──\n  const wantedValues = deriveCustomValues(config);\n  const valuesByName = new Map((existing.customValues || []).map((v) => [norm(v.name), v]));\n\n  for (const cv of wantedValues) {\n    const current = valuesByName.get(norm(cv.key));\n    if (!current) {\n      operations.push({\n        kind: 'custom_value', action: 'create', label: cv.key, detail: cv.value,\n        method: 'POST', path: `${locationPath}/customValues`, body: { name: cv.key, value: cv.value },\n      });\n    } else if (String(current.value) !== String(cv.value)) {\n      operations.push({\n        kind: 'custom_value', action: 'update', label: cv.key,\n        detail: `\"${current.value}\" → \"${cv.value}\"`,\n        method: 'PUT', path: `${locationPath}/customValues/${current.id}`,\n        body: { name: cv.key, value: cv.value },\n      });\n    } else {\n      skipped.push({ kind: 'custom_value', label: cv.key });\n    }\n  }\n\n  const count = (kind, action) => operations.filter((o) => o.kind === kind && o.action === action).length;\n  return {\n    operations,\n    conflicts,\n    skipped,\n    summary: {\n      to_create: operations.filter((o) => o.action === 'create').length,\n      to_update: operations.filter((o) => o.action === 'update').length,\n      unchanged: skipped.length,\n      conflicts: conflicts.length,\n      custom_fields: { create: count('custom_field', 'create'), update: count('custom_field', 'update') },\n      tags: { create: count('tag', 'create') },\n      custom_values: { create: count('custom_value', 'create'), update: count('custom_value', 'update') },\n    },\n  };\n}\n\n// ── glue n8n ──\nconst params = $('Citește parametrii').first().json;\nconst config = $('Încarcă configul').first().json.config;\n\nconst existing = {\n  customFields: $('Citește custom fields').first().json?.data?.customFields || [],\n  tags: $('Citește tag-urile').first().json?.data?.tags || [],\n  customValues: $('Citește custom values').first().json?.data?.customValues || [],\n};\n\nconst plan = buildProvisionPlan({ config, existing });\n\nreturn [{ json: {\n  client_id: params.client_id,\n  apply: params.apply,\n  summary: plan.summary,\n  conflicts: plan.conflicts,\n  operations: plan.operations,\n} }];"
+      },
+      "id": "1377acb923feca9b",
+      "name": "Construiește planul",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2420,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "b96d432d4bc4",
+              "leftValue": "={{ $json.apply }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "892a434415d26440",
+      "name": "Aplicăm?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2660,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// WF_SETUP · execuție\n// Un item per operațiune; SW01 le execută secvențial, ca un 429 să nu lase sub-contul pe jumătate provisionat.\n// Generat de scripts/build-n8n.mjs — nu edita în n8n, modifică sursa.\n\nconst plan = $input.first().json;\nif (!plan.operations.length) return [{ json: { client_id: plan.client_id, nothing_to_do: true } }];\n\nreturn plan.operations.map((operation) => ({ json: {\n  client_id: plan.client_id,\n  method: operation.method,\n  path: operation.path,\n  body: operation.body,\n  _op: { kind: operation.kind, action: operation.action, label: operation.label },\n} }));"
+      },
+      "id": "282cbe4e19604924",
+      "name": "Desfășoară operațiunile",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2900,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $env.WF_ID_SW01_GHL_API }}"
+        },
+        "mode": "each",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "9d63381f60d8d87c",
+      "name": "Creează în GHL",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        2900,
+        480
+      ],
+      "retryOnFail": true,
+      "maxTries": 4,
+      "waitBetweenTries": 2500
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// WF_SETUP · raport\n// Ce s-a făcut, ce a rămas de rezolvat manual.\n// Generat de scripts/build-n8n.mjs — nu edita în n8n, modifică sursa.\n\nconst plan = $('Construiește planul').first().json;\nconst applied = plan.apply ? $input.all().length : 0;\n\nconst lines = [\n  plan.apply ? `Aplicat pe \"${plan.client_id}\": ${applied} operațiuni.` : `Plan pentru \"${plan.client_id}\" (nu s-a scris nimic).`,\n  `  de creat:      ${plan.summary.to_create}`,\n  `  de actualizat: ${plan.summary.to_update}`,\n  `  neschimbate:   ${plan.summary.unchanged}`,\n  `  custom fields: +${plan.summary.custom_fields.create} ~${plan.summary.custom_fields.update}`,\n  `  tag-uri:       +${plan.summary.tags.create}`,\n  `  custom values: +${plan.summary.custom_values.create} ~${plan.summary.custom_values.update}`,\n];\nif (plan.conflicts.length) {\n  lines.push('', `${plan.conflicts.length} conflicte de rezolvat manual în GHL:`);\n  for (const c of plan.conflicts) lines.push(`  ${c.label} — ${c.detail}`);\n}\n\nreturn [{ json: { client_id: plan.client_id, applied_operations: applied, summary: plan.summary, conflicts: plan.conflicts, report: lines.join('\\n') } }];"
+      },
+      "id": "458cf401fe7559ec",
+      "name": "Raport",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3140,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Formular de provisioning": {
+      "main": [
+        [
+          {
+            "node": "Citește parametrii",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Citește parametrii": {
+      "main": [
+        [
+          {
+            "node": "Încarcă configul",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Încarcă configul": {
+      "main": [
+        [
+          {
+            "node": "Cere custom fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cere custom fields": {
+      "main": [
+        [
+          {
+            "node": "Citește custom fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Citește custom fields": {
+      "main": [
+        [
+          {
+            "node": "Cere tag-urile",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cere tag-urile": {
+      "main": [
+        [
+          {
+            "node": "Citește tag-urile",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Citește tag-urile": {
+      "main": [
+        [
+          {
+            "node": "Cere custom values",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cere custom values": {
+      "main": [
+        [
+          {
+            "node": "Citește custom values",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Citește custom values": {
+      "main": [
+        [
+          {
+            "node": "Construiește planul",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Construiește planul": {
+      "main": [
+        [
+          {
+            "node": "Aplicăm?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aplicăm?": {
+      "main": [
+        [
+          {
+            "node": "Desfășoară operațiunile",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Raport",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Desfășoară operațiunile": {
+      "main": [
+        [
+          {
+            "node": "Creează în GHL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Creează în GHL": {
+      "main": [
+        [
+          {
+            "node": "Raport",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "saveExecutionProgress": true
+  },
+  "pinData": {},
+  "tags": [
+    {
+      "name": "fundatie"
+    },
+    {
+      "name": "setup"
+    }
+  ],
+  "meta": {
+    "description": "Creează în GHL tot ce cere configul unui client. Idempotent. Alternativa la scripts/provision-ghl.mjs pentru cazul în care rețeaua de unde rulezi scriptul nu are acces la API-ul GHL — logica de plan e aceeași funcție."
+  }
+}

@@ -1,0 +1,323 @@
+{
+  "name": "SW01 · Apel GHL API v2",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "ef6322c255eea9b2",
+      "name": "Când primește cererea",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        260,
+        300
+      ],
+      "notes": "Intrare: { client_id, method, path, body?, query?, version_override? }. În path, {locationId} se înlocuiește automat."
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $vars.WF_ID_SW00_LOAD_CONFIG }}"
+        },
+        "mode": "once",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "6a8ec207d88f9b30",
+      "name": "Încarcă configul",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        500,
+        300
+      ],
+      "retryOnFail": true,
+      "maxTries": 4,
+      "waitBetweenTries": 2500
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// SW01 · pregătirea apelului\n// Header-ul Version e obligatoriu pe GHL API v2 și diferă pe resurse — fără el request-ul e respins.\n// Generat de scripts/build-n8n.mjs — nu edita în n8n, modifică sursa.\n\nconst request = $('Când primește cererea').first().json;\nconst config = $input.first().json.config;\nconst ghl = config.integrations.ghl;\n\nconst method = (request.method || 'GET').toUpperCase();\nif (!request.path) throw new Error('SW01: path lipsă.');\n\nconst locationId = $vars[ghl.location_id_env];\nif (!locationId) throw new Error('SW01: lipsește variabila de mediu ' + ghl.location_id_env + ' (id-ul sub-contului GHL).');\nif (!ghl.token_env || !$vars[ghl.token_env]) {\n  throw new Error('SW01: lipsește variabila de mediu ' + ghl.token_env + ' (Private Integration Token).');\n}\n\n// Conversations cere altă valoare de Version decât restul resurselor.\nconst version = request.version_override\n  || (request.path.includes('/conversations') ? (ghl.api_versions.conversations || ghl.api_versions.default) : ghl.api_versions.default);\n\nconst resolvedPath = request.path.replace(/\\{locationId\\}/g, locationId);\nconst hasBody = request.body !== undefined && request.body !== null;\n\nreturn [{ json: {\n  method,\n  url: ghl.api_base.replace(/\\/$/, '') + resolvedPath,\n  version,\n  token_env: ghl.token_env,\n  query: request.query || {},\n  body: hasBody ? request.body : null,\n  has_body: hasBody,\n  location_id: locationId,\n  client_id: config.client.id,\n  label: method + ' ' + resolvedPath,\n} }];"
+      },
+      "id": "235028387f90ff71",
+      "name": "Pregătește apelul",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        740,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "e0451f4c7908",
+              "leftValue": "={{ $json.has_body }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "bb9947fcc34e9afd",
+      "name": "Are corp?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        980,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "={{ $json.method }}",
+        "url": "={{ $json.url }}",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ \"Bearer \" + $vars[$json.token_env] }}"
+            },
+            {
+              "name": "Version",
+              "value": "={{ $json.version }}"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendQuery": true,
+        "specifyQuery": "json",
+        "jsonQuery": "={{ JSON.stringify($json.query) }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.body) }}",
+        "options": {
+          "timeout": 20000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": false
+            }
+          }
+        }
+      },
+      "id": "aa74b18f8b4bd43b",
+      "name": "Apel GHL (cu corp)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1220,
+        480
+      ],
+      "retryOnFail": true,
+      "maxTries": 4,
+      "waitBetweenTries": 2500,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "method": "={{ $json.method }}",
+        "url": "={{ $json.url }}",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ \"Bearer \" + $vars[$json.token_env] }}"
+            },
+            {
+              "name": "Version",
+              "value": "={{ $json.version }}"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendQuery": true,
+        "specifyQuery": "json",
+        "jsonQuery": "={{ JSON.stringify($json.query) }}",
+        "options": {
+          "timeout": 20000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": false
+            }
+          }
+        }
+      },
+      "id": "262aab446bc3a1a4",
+      "name": "Apel GHL (fără corp)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1220,
+        660
+      ],
+      "retryOnFail": true,
+      "maxTries": 4,
+      "waitBetweenTries": 2500,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// SW01 · răspuns\n// Ieșire uniformă indiferent de ramura HTTP folosită.\n// Generat de scripts/build-n8n.mjs — nu edita în n8n, modifică sursa.\n\nconst prepared = $('Pregătește apelul').first().json;\nconst raw = $input.first().json;\nconst status = raw.statusCode ?? 200;\nconst payload = raw.body ?? raw;\n\nreturn [{ json: {\n  ok: true,\n  status,\n  label: prepared.label,\n  client_id: prepared.client_id,\n  data: payload,\n} }];"
+      },
+      "id": "5e7d55928ec50eaf",
+      "name": "Normalizează răspunsul",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// SW01 · eroare\n// Eșecurile nu sunt silențioase: mesajul spune ce a picat și de ce, ca alerta să fie acționabilă.\n// Generat de scripts/build-n8n.mjs — nu edita în n8n, modifică sursa.\n\nconst prepared = $('Pregătește apelul').first().json;\nconst err = $input.first().json;\nconst status = err.statusCode ?? err.error?.statusCode ?? err.httpCode ?? 'necunoscut';\n\nconst hint = {\n  401: 'Private Integration Token invalid sau expirat.',\n  403: 'Token valid, dar fără scopul necesar. Vezi integrations.ghl.required_pit_scopes.',\n  404: 'Resursa nu există pe acest sub-cont. Verifică location_id.',\n  422: 'Payload respins. Cel mai des: header Version lipsă/greșit sau dataType nepermis.',\n  429: 'Rate limit atins după toate reîncercările.',\n}[Number(status)] || 'Vezi corpul răspunsului.';\n\nthrow new Error(\n  'SW01 ' + prepared.label + ' a eșuat cu status ' + status + '. ' + hint +\n  ' Detalii: ' + JSON.stringify(err.error ?? err.body ?? err).slice(0, 800)\n);"
+      },
+      "id": "775b4a5f5c87103d",
+      "name": "Ridică eroare descriptivă",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1700,
+        480
+      ]
+    }
+  ],
+  "connections": {
+    "Când primește cererea": {
+      "main": [
+        [
+          {
+            "node": "Încarcă configul",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Încarcă configul": {
+      "main": [
+        [
+          {
+            "node": "Pregătește apelul",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pregătește apelul": {
+      "main": [
+        [
+          {
+            "node": "Are corp?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Are corp?": {
+      "main": [
+        [
+          {
+            "node": "Apel GHL (cu corp)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Apel GHL (fără corp)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apel GHL (cu corp)": {
+      "main": [
+        [
+          {
+            "node": "Normalizează răspunsul",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Ridică eroare descriptivă",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apel GHL (fără corp)": {
+      "main": [
+        [
+          {
+            "node": "Normalizează răspunsul",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Ridică eroare descriptivă",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "saveExecutionProgress": true
+  },
+  "pinData": {},
+  "tags": [
+    {
+      "name": "fundatie"
+    },
+    {
+      "name": "sub-workflow"
+    }
+  ],
+  "meta": {
+    "description": "Wrapper peste GHL API v2: auth din mediu, header Version corect pe resursă, retry cu backoff, erori descriptive. Acoperă tag-uri și custom values, pe care node-ul nativ HighLevel nu le are."
+  }
+}

@@ -1,0 +1,100 @@
+{
+  "name": "SW02 · Garda de trimitere",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "3c2e45192d1642a6",
+      "name": "Când primește cererea",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        260,
+        300
+      ],
+      "notes": "Intrare: { client_id, contact: { id, tags[], customFields{} }, request: { flow_id, step_id, channel, category, kind, occurrence_key }, now? }"
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $vars.WF_ID_SW00_LOAD_CONFIG }}"
+        },
+        "mode": "once",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "02ff8f125c4aa1a9",
+      "name": "Încarcă configul",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        500,
+        300
+      ],
+      "retryOnFail": true,
+      "maxTries": 4,
+      "waitBetweenTries": 2500
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// SW02 · garda de trimitere\n// Consimțământ, opt-out, idempotență, suprimare între fluxuri, plafon de frecvență, ferestre orare.\n// Generat de scripts/build-n8n.mjs — nu edita în n8n, modifică sursa.\n\n/**\n * Garda de trimitere — singurul loc în care se decide dacă un mesaj pleacă.\n *\n * Rulează identic în Node (pentru teste) și într-un node Code din n8n: scriptul\n * de build îl inlinează în workflow, deci logica testată aici este exact logica\n * din producție.\n *\n * Funcție pură: primește configul, contactul și cererea; nu face I/O. Toate\n * datele de contact vin de la apelant (SW01 · GHL API), ca să poată fi testată\n * pe scenarii fără să atingă GHL.\n *\n * Ordinea verificărilor contează: conformitatea are prioritate absolută, apoi\n * idempotența (ieftină, previne dublurile), apoi regulile de business.\n */\n\n/** Părțile datei în fusul orar dat, fără dependințe. */\nfunction zonedParts(date, timeZone) {\n  const fmt = new Intl.DateTimeFormat('en-US', {\n    timeZone, hour12: false,\n    year: 'numeric', month: '2-digit', day: '2-digit',\n    hour: '2-digit', minute: '2-digit', second: '2-digit',\n  });\n  const parts = {};\n  for (const p of fmt.formatToParts(date)) if (p.type !== 'literal') parts[p.type] = Number(p.value);\n  if (parts.hour === 24) parts.hour = 0;\n  return parts;\n}\n\n/** Decalajul fusului față de UTC, în minute, la momentul dat. */\nfunction offsetMinutes(date, timeZone) {\n  const p = zonedParts(date, timeZone);\n  const asUtc = Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second);\n  return (asUtc - Math.floor(date.getTime() / 1000) * 1000) / 60000;\n}\n\n/**\n * Instantul UTC pentru o oră locală dintr-o zi locală dată.\n * Două treceri, ca să prindem corect zilele de schimbare a orei.\n */\nfunction utcFromLocal(year, month, day, hour, minute, timeZone) {\n  let guess = new Date(Date.UTC(year, month - 1, day, hour, minute));\n  for (let i = 0; i < 2; i++) {\n    const off = offsetMinutes(guess, timeZone);\n    guess = new Date(Date.UTC(year, month - 1, day, hour, minute) - off * 60000);\n  }\n  return guess;\n}\n\n/** Următorul moment în care canalul are voie să trimită. null = acum e în regulă. */\nfunction nextAllowedWindow(now, timeZone, window) {\n  if (!window || !window.enforced) return null;\n  const [startH, startM] = window.start.split(':').map(Number);\n  const [endH, endM] = window.end.split(':').map(Number);\n  const p = zonedParts(now, timeZone);\n  const minutesNow = p.hour * 60 + p.minute;\n  const startMin = startH * 60 + startM;\n  const endMin = endH * 60 + endM;\n\n  if (minutesNow >= startMin && minutesNow < endMin) return null;\n\n  if (minutesNow < startMin) return utcFromLocal(p.year, p.month, p.day, startH, startM, timeZone);\n  // După fereastră: prima fereastră de mâine.\n  const tomorrow = new Date(utcFromLocal(p.year, p.month, p.day, 12, 0, timeZone).getTime() + 24 * 3600 * 1000);\n  const tp = zonedParts(tomorrow, timeZone);\n  return utcFromLocal(tp.year, tp.month, tp.day, startH, startM, timeZone);\n}\n\nfunction parseJournal(raw) {\n  if (!raw) return [];\n  try {\n    const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;\n    return Array.isArray(parsed) ? parsed : [];\n  } catch {\n    // Un jurnal corupt nu are voie să blocheze trimiterile tranzacționale, dar\n    // nici să deschidă porțile la spam: se tratează ca jurnal gol și se\n    // raportează, ca să fie vizibil în alertare.\n    return [];\n  }\n}\n\nfunction buildIdempotencyKey(template, values) {\n  return template.replace(/\\{\\{(\\w+)\\}\\}/g, (_, key) => String(values[key] ?? ''));\n}\n\nfunction pruneJournal(journal, now, retentionDays) {\n  const cutoff = now.getTime() - retentionDays * 86400000;\n  return journal.filter((e) => {\n    const t = Date.parse(e.t);\n    return Number.isFinite(t) && t >= cutoff;\n  });\n}\n\n/**\n * @param {object} args\n * @param {object} args.config   configul clientului\n * @param {object} args.contact  { id, tags: string[], customFields: Record<string,any> }\n * @param {object} args.request  { flow_id, step_id, channel, category, kind, occurrence_key }\n * @param {string} [args.nowIso]\n * @returns {{action:'send'|'defer'|'drop', allowed:boolean, reason:string, defer_until:string|null,\n *            idempotency_key:string, journal_kept:number, detail?:object}}\n */\nfunction evaluateGuard({ config, contact, request, nowIso }) {\n  const now = nowIso ? new Date(nowIso) : new Date();\n  const rules = config.sending_rules;\n  const timeZone = config.client.timezone;\n  const tags = (contact.tags || []).map((t) => String(t).toLowerCase());\n  const fields = contact.customFields || {};\n\n  const idempotencyKey = buildIdempotencyKey(rules.idempotency.key_template, {\n    client_id: config.client.id,\n    contact_id: contact.id,\n    flow_id: request.flow_id,\n    step_id: request.step_id,\n    occurrence_key: request.occurrence_key ?? '',\n  });\n\n  const journal = pruneJournal(parseJournal(fields[rules.log.field_key]), now, rules.log.retention_days);\n  const deny = (action, reason, detail) => ({\n    action, allowed: false, reason, detail,\n    defer_until: detail?.defer_until ?? null,\n    idempotency_key: idempotencyKey,\n    journal_kept: journal.length,\n  });\n\n  const isCommercial = request.kind === 'commercial';\n\n  // 1. Canalul trebuie să fie efectiv disponibil. WhatsApp fără BSP aprobat nu\n  //    e o eroare de rulare, e un pas care încă nu poate exista.\n  if (request.channel === 'whatsapp' && !config.integrations.whatsapp.enabled) {\n    return deny('drop', 'channel_unavailable', { channel: 'whatsapp' });\n  }\n\n  // 2. Conformitate: opt-out bate orice flux, inclusiv tranzacțional comercial.\n  const optoutTag = (config.compliance.optout_tags || {})[request.channel];\n  if (optoutTag && tags.includes(optoutTag.toLowerCase())) {\n    return deny('drop', 'opted_out', { tag: optoutTag });\n  }\n\n  // 3. Consimțământ pe canalul respectiv. Fără el nu se trimite, indiferent de flux.\n  if (config.compliance.consent_required_per_channel) {\n    const consent = (config.compliance.consent_fields || {})[request.channel];\n    const value = consent ? fields[consent.flag] : undefined;\n    const granted = value === true || value === 'true' || value === 1 || value === '1' || value === 'yes';\n    if (!granted) return deny('drop', 'no_consent', { field: consent?.flag, value: value ?? null });\n  }\n\n  // 4. Idempotență: re-rularea unui workflow nu retrimite același mesaj.\n  if (journal.some((e) => e.key === idempotencyKey)) {\n    return deny('drop', 'duplicate', { idempotency_key: idempotencyKey });\n  }\n\n  // 5. Suprimare între fluxuri: cine e în plecare / în vacanță / la întoarcere\n  //    nu primește Early Booking, Last Minute sau nurturing.\n  if (isCommercial) {\n    const flowPrefix = config.taxonomy.system_tag_prefixes.flow_state;\n    const blocking = rules.suppression.exclusive_flow_ids\n      .map((flowId) => `${flowPrefix}${flowId}`.toLowerCase())\n      .filter((tag) => tags.includes(tag));\n    if (blocking.length) return deny('drop', 'suppressed_by_exclusive_flow', { tags: blocking });\n  }\n\n  // 6. Plafonul de frecvență. Tranzacționalele trec peste el prin definiție.\n  if (isCommercial || !rules.frequency_cap.transactional_bypasses_cap) {\n    const cap = rules.frequency_cap.commercial;\n    const windowStart = now.getTime() - cap.rolling_days * 86400000;\n    const recent = journal\n      .filter((e) => e.k === 'commercial' && Date.parse(e.t) >= windowStart)\n      .sort((a, b) => Date.parse(a.t) - Date.parse(b.t));\n\n    if (recent.length >= cap.max_messages) {\n      // Se amână până iese cel mai vechi mesaj din fereastra rulantă, nu se pierde.\n      const oldest = Date.parse(recent[0].t);\n      const freeAt = new Date(oldest + cap.rolling_days * 86400000);\n      return deny('defer', 'frequency_cap', {\n        defer_until: freeAt.toISOString(),\n        sent_in_window: recent.length,\n        max: cap.max_messages,\n      });\n    }\n\n    const minGapHours = rules.frequency_cap.min_hours_between_commercial || 0;\n    if (minGapHours > 0 && recent.length) {\n      const last = Date.parse(recent[recent.length - 1].t);\n      const nextOk = last + minGapHours * 3600000;\n      if (now.getTime() < nextOk) {\n        return deny('defer', 'min_gap_between_commercial', {\n          defer_until: new Date(nextOk).toISOString(),\n          min_hours: minGapHours,\n        });\n      }\n    }\n  }\n\n  // 7. Ferestre orare. Se aplică pe canal, în fusul clientului.\n  const window = rules.quiet_hours.per_channel[request.channel];\n  const nextWindow = nextAllowedWindow(now, timeZone, window);\n  if (nextWindow) {\n    if (rules.quiet_hours.defer_strategy === 'drop') {\n      return deny('drop', 'outside_sending_window', { window });\n    }\n    return deny('defer', 'outside_sending_window', { defer_until: nextWindow.toISOString(), window });\n  }\n\n  return {\n    action: 'send',\n    allowed: true,\n    reason: 'ok',\n    defer_until: null,\n    idempotency_key: idempotencyKey,\n    journal_kept: journal.length,\n  };\n}\n\n/** Intrarea de adăugat în jurnal după o trimitere reușită. */\nfunction journalEntry({ request, idempotencyKey, nowIso }) {\n  return {\n    t: nowIso || new Date().toISOString(),\n    f: request.flow_id,\n    s: request.step_id,\n    c: request.channel,\n    k: request.kind,\n    cat: request.category,\n    key: idempotencyKey,\n  };\n}\n\n// ── glue n8n ──\nconst input = $('Când primește cererea').first().json;\nconst config = $input.first().json.config;\n\nif (!input.contact || !input.contact.id) throw new Error('SW02: contact.id lipsă.');\nif (!input.request || !input.request.channel) throw new Error('SW02: request.channel lipsă.');\n\nconst decision = evaluateGuard({\n  config,\n  contact: input.contact,\n  request: input.request,\n  nowIso: input.now,\n});\n\nreturn [{ json: {\n  ...decision,\n  client_id: config.client.id,\n  contact_id: input.contact.id,\n  request: input.request,\n} }];"
+      },
+      "id": "d9955a0960be714e",
+      "name": "Evaluează garda",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        740,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Când primește cererea": {
+      "main": [
+        [
+          {
+            "node": "Încarcă configul",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Încarcă configul": {
+      "main": [
+        [
+          {
+            "node": "Evaluează garda",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "saveExecutionProgress": true
+  },
+  "pinData": {},
+  "tags": [
+    {
+      "name": "fundatie"
+    },
+    {
+      "name": "sub-workflow"
+    },
+    {
+      "name": "conformitate"
+    }
+  ],
+  "meta": {
+    "description": "Decide dacă un mesaj pleacă, se amână sau se renunță. Ieșire: { action: send|defer|drop, allowed, reason, defer_until, idempotency_key }. Logica e n8n/runtime/guard.mjs, acoperită de npm test."
+  }
+}

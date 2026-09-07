@@ -1,0 +1,73 @@
+# n8n local, pentru învățat și testat.
+#
+#   docker compose -f docker-compose.local.yml up -d      pornește
+#   docker compose -f docker-compose.local.yml logs -f    vezi ce face
+#   docker compose -f docker-compose.local.yml down       oprește (datele rămân)
+#
+# Ce e diferit față de producție: aici rulează pe calculatorul tău, deci merge
+# doar cât timp e pornit. Bun de învățat și de testat fluxuri, NU de trimis
+# mesaje reale către clienți — un reminder de plată programat la 09:00 nu pleacă
+# dacă laptopul e închis.
+
+name: dor-travel-n8n-local
+
+services:
+  # Servește config/clients/<client>.json către n8n, ca în producție.
+  # n8n îl vede la http://config — nu are nevoie de port expus pe calculatorul tău.
+  config:
+    image: nginx:alpine
+    restart: unless-stopped
+    volumes:
+      - ./config/clients:/usr/share/nginx/html:ro
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost/dor-travel.json"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  n8n:
+    image: n8nio/n8n:latest
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    depends_on:
+      config:
+        condition: service_healthy
+    environment:
+      # Fusul orar contează: ferestrele orare și cron-urile fluxurilor se
+      # calculează în ora României.
+      TZ: Europe/Bucharest
+      GENERIC_TIMEZONE: Europe/Bucharest
+
+      # Fără asta, $env întoarce obiect gol și toate workflow-urile cad.
+      N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
+
+      # Pe http://localhost, altfel nu te poți autentifica în interfață.
+      N8N_SECURE_COOKIE: "false"
+      WEBHOOK_URL: http://localhost:5678/
+
+      # De unde își încarcă workflow-urile configul clientului.
+      CONFIG_BASE_URL: http://config
+      CONFIG_CACHE_TTL_SECONDS: "60"
+
+      # ── Din .env.local ──
+      GHL_PIT_DOR_TRAVEL: ${GHL_PIT_DOR_TRAVEL:?lipsește din .env.local}
+      GHL_LOCATION_ID_DOR_TRAVEL: ${GHL_LOCATION_ID_DOR_TRAVEL:?lipsește din .env.local}
+      FORM_SECRET_DOR_TRAVEL: ${FORM_SECRET_DOR_TRAVEL:-secret-local}
+      ALERT_EMAIL: ${ALERT_EMAIL:-}
+      ALERT_FROM_EMAIL: ${ALERT_FROM_EMAIL:-}
+      KPI_SPREADSHEET_ID: ${KPI_SPREADSHEET_ID:-}
+
+      # Id-urile workflow-urilor, completate după primul import.
+      WF_ID_SW00_LOAD_CONFIG: ${WF_ID_SW00_LOAD_CONFIG:-}
+      WF_ID_SW01_GHL_API: ${WF_ID_SW01_GHL_API:-}
+      WF_ID_SW02_SEND_GUARD: ${WF_ID_SW02_SEND_GUARD:-}
+      WF_ID_SW03_SEND_MESSAGE: ${WF_ID_SW03_SEND_MESSAGE:-}
+      WF_ID_WF00_PREFERENCES: ${WF_ID_WF00_PREFERENCES:-}
+      WF_ID_WF_ERR_ALERTING: ${WF_ID_WF_ERR_ALERTING:-}
+      WF_ID_WF_SETUP_PROVISIONING: ${WF_ID_WF_SETUP_PROVISIONING:-}
+    volumes:
+      - n8n_data:/home/node/.n8n
+
+volumes:
+  n8n_data:

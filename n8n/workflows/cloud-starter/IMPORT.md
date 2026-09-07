@@ -1,6 +1,6 @@
 # Import în n8n Cloud Starter
 
-Generat de `scripts/build-n8n.mjs --target=cloud-starter`.
+Generat de `npm run build:n8n`. Nu edita manual.
 
 Starter nu are nici variabile de mediu, nici Variables (`$vars` e pe Pro). De aceea
 setările de instanță apar în workflow-uri ca marcaje `__COMPLETEAZA_...__` pe care le
@@ -8,8 +8,8 @@ completezi o singură dată, la import.
 
 **Consecință de arhitectură:** pe Starter merge o singură agenție per instanță, fiindcă
 tokenul GHL e o credențială fixă pe node, nu una aleasă după `client_id`. Când adaugi a
-doua agenție, treci pe Pro și regenerezi cu `npm run build:n8n:pro` — marcajele dispar și
-multi-client funcționează fără să atingi vreun node.
+doua agenție, treci pe Pro și folosești workflow-urile din `../cloud-pro/` — marcajele
+dispar și multi-client funcționează fără să atingi vreun node.
 
 ## 1. Importă workflow-urile
 

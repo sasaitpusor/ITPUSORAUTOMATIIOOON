@@ -1,0 +1,220 @@
+{
+  "name": "SW00 · Încarcă configul clientului",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "44de505bb3e1a917",
+      "name": "Când primește cererea",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        260,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// SW00 · sursa configului\n// Cache în static data ca să nu descărcăm configul la fiecare mesaj.\n// Generat de scripts/build-n8n.mjs — nu edita în n8n, modifică sursa.\n\nconst clientId = $input.first().json.client_id;\nif (!clientId) throw new Error('SW00: client_id lipsă în intrare.');\n\nconst base = ($vars.CONFIG_BASE_URL || '').replace(/\\/$/, '');\nif (!base) throw new Error('SW00: variabila de mediu CONFIG_BASE_URL nu e setată. Vezi n8n/README.md.');\n\nconst ttlMs = Number($vars.CONFIG_CACHE_TTL_SECONDS || 300) * 1000;\nconst staticData = $getWorkflowStaticData('global');\nconst hit = staticData['cfg:' + clientId];\nconst fresh = Boolean(hit && (Date.now() - hit.at) < ttlMs);\n\nreturn [{ json: {\n  client_id: clientId,\n  cached: fresh,\n  config: fresh ? hit.config : null,\n  config_url: base + '/' + clientId + '.json',\n} }];"
+      },
+      "id": "835615d861bb6542",
+      "name": "Pregătește sursa configului",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        500,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cb01508766b0",
+              "leftValue": "={{ $json.cached }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "8d94af67e7078250",
+      "name": "Config în cache?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        740,
+        300
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "97e08d441ca81503",
+      "name": "Din cache",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        980,
+        480
+      ],
+      "notes": "Configul e deja în static data și încă valid."
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.config_url }}",
+        "authentication": "none",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": false
+            }
+          },
+          "timeout": 15000
+        }
+      },
+      "id": "9642b05371e33ffa",
+      "name": "Descarcă configul",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        980,
+        660
+      ],
+      "retryOnFail": true,
+      "maxTries": 4,
+      "waitBetweenTries": 2500,
+      "notes": "CONFIG_BASE_URL trebuie să indice un director cu <client-id>.json accesibil de n8n."
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// SW00 · validare și cache\n// Un config greșit descărcat aici ar strica toate fluxurile — se validează minimal înainte de a fi folosit.\n// Generat de scripts/build-n8n.mjs — nu edita în n8n, modifică sursa.\n\nconst clientId = $('Pregătește sursa configului').first().json.client_id;\nconst config = $input.first().json;\n\nif (!config || !config.client) throw new Error('SW00: răspunsul de la CONFIG_BASE_URL nu e un config valid.');\nif (config.client.id !== clientId) {\n  throw new Error('SW00: configul descărcat e pentru \"' + config.client.id + '\", cerut \"' + clientId + '\".');\n}\nfor (const key of ['taxonomy', 'sending_rules', 'compliance', 'merge_fields', 'flows', 'integrations']) {\n  if (!config[key]) throw new Error('SW00: configul lui ' + clientId + ' nu are secțiunea \"' + key + '\".');\n}\n\nconst staticData = $getWorkflowStaticData('global');\nstaticData['cfg:' + clientId] = { at: Date.now(), config };\n\nreturn [{ json: { client_id: clientId, config } }];"
+      },
+      "id": "20882574a0ce7324",
+      "name": "Pune în cache",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        980,
+        660
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "8210b5f6f9d965a0",
+      "name": "Config",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1220,
+        300
+      ],
+      "notes": "Ieșire: { client_id, config }"
+    }
+  ],
+  "connections": {
+    "Când primește cererea": {
+      "main": [
+        [
+          {
+            "node": "Pregătește sursa configului",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pregătește sursa configului": {
+      "main": [
+        [
+          {
+            "node": "Config în cache?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config în cache?": {
+      "main": [
+        [
+          {
+            "node": "Din cache",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Descarcă configul",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Descarcă configul": {
+      "main": [
+        [
+          {
+            "node": "Pune în cache",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Din cache": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pune în cache": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "saveExecutionProgress": true
+  },
+  "pinData": {},
+  "tags": [
+    {
+      "name": "fundatie"
+    },
+    {
+      "name": "sub-workflow"
+    }
+  ],
+  "meta": {
+    "description": "Încarcă și cachează configul unui client. Intrare: { client_id }. Ieșire: { client_id, config }."
+  }
+}
