@@ -1,0 +1,1529 @@
+{
+  "$schema": "../schema/client.config.schema.json",
+  "config_version": "1.0.0",
+  "client": {
+    "id": "dor-travel",
+    "agency_name": "Dor Travel",
+    "product_name": "Destinația Ta Perfectă",
+    "legal_name": "TBD — see docs/02-intrebari-deschise.md Q4",
+    "website": "TBD",
+    "locale": "ro-RO",
+    "timezone": "Europe/Bucharest",
+    "currency": "EUR",
+    "business_model": "sejururi organizate (pachet complet), consultanta si recomandare de vacante — NU catalog de hoteluri individuale",
+    "support_hours": "Luni–Vineri 09:00–18:00"
+  },
+  "brand_voice": {
+    "tone": "cald, uman, consultativ, fara presiune de vanzare; vorbim ca un consultant care cunoaste clientul, nu ca un newsletter",
+    "person": "persoana a doua singular (tu)",
+    "avoid": [
+      "limbaj de tip clickbait sau urgenta artificiala",
+      "superlative nesustinute (\"cea mai buna oferta din Romania\")",
+      "promovarea de hoteluri individuale ca produs de sine statator",
+      "jargon de agentie (\"pax\", \"BB\", \"DBL\")"
+    ],
+    "signature_template": "{{consultant_name}} — {{agency_name}}\n{{consultant_phone}} · {{consultant_email}}",
+    "positioning_statement": "Nu vindem camere de hotel. Recomandam vacanta potrivita pentru fiecare om, in pachet complet: zbor, transfer, cazare, mese si suport de la plecare pana la intoarcere."
+  },
+  "integrations": {
+    "ghl": {
+      "api_base": "https://services.leadconnectorhq.com",
+      "auth_mode": "private_integration_token",
+      "credential_name_n8n": "GHL PIT — dor-travel",
+      "location_id_env": "GHL_LOCATION_ID_DOR_TRAVEL",
+      "api_versions": {
+        "default": "2021-07-28",
+        "conversations": "2021-04-15"
+      },
+      "required_pit_scopes": [
+        "contacts.readonly",
+        "contacts.write",
+        "locations/customFields.readonly",
+        "locations/customFields.write",
+        "locations/customValues.readonly",
+        "locations/customValues.write",
+        "locations/tags.readonly",
+        "locations/tags.write",
+        "conversations.readonly",
+        "conversations.write",
+        "conversations/message.readonly",
+        "conversations/message.write",
+        "opportunities.readonly",
+        "opportunities.write",
+        "users.readonly",
+        "workflows.readonly"
+      ],
+      "token_env": "GHL_PIT_DOR_TRAVEL",
+      "secrets_mode": "env"
+    },
+    "claude": {
+      "api_base": "https://api.anthropic.com",
+      "credential_name_n8n": "Anthropic API — content generation",
+      "model": "claude-opus-5",
+      "batch_model": "claude-sonnet-5",
+      "max_output_tokens": 4096
+    },
+    "whatsapp": {
+      "enabled": false,
+      "provider": "TBD — see docs/02-intrebari-deschise.md Q3",
+      "credential_name_n8n": "WhatsApp BSP — dor-travel",
+      "sender_id_env": "WA_SENDER_ID_DOR_TRAVEL",
+      "session_window_hours": 24,
+      "templates": {}
+    },
+    "sms": {
+      "provider": "ghl_native",
+      "sender_id_env": null,
+      "max_segments": 2,
+      "unicode_allowed": false
+    },
+    "email": {
+      "provider": "ghl_native",
+      "from_name": "Dor Travel",
+      "from_address": "TBD — see docs/02-intrebari-deschise.md Q4",
+      "reply_to": "TBD",
+      "sending_domain": "TBD",
+      "dns_verified": false
+    },
+    "reporting": {
+      "sink": "google_sheets",
+      "credential_name_n8n": "Google Sheets — reporting",
+      "spreadsheet_id_env": "KPI_SPREADSHEET_ID_DOR_TRAVEL",
+      "tabs": {
+        "send_log": "send_log",
+        "flow_events": "flow_events",
+        "attribution": "attribution",
+        "content_review": "content_review"
+      }
+    },
+    "alerting": {
+      "channel": "email",
+      "to_env": "ALERT_EMAIL_DOR_TRAVEL",
+      "min_severity": "error"
+    }
+  },
+  "taxonomy": {
+    "tag_case": "lower_snake",
+    "axes": {
+      "destination": {
+        "tag_prefix": "dest_",
+        "field_key": "destinatii_favorite",
+        "multi": true,
+        "values": [
+          {
+            "key": "grecia",
+            "label": "Grecia"
+          },
+          {
+            "key": "turcia",
+            "label": "Turcia"
+          },
+          {
+            "key": "egipt",
+            "label": "Egipt"
+          },
+          {
+            "key": "croatia",
+            "label": "Croația"
+          },
+          {
+            "key": "albania",
+            "label": "Albania"
+          },
+          {
+            "key": "cipru",
+            "label": "Cipru"
+          },
+          {
+            "key": "italia",
+            "label": "Italia"
+          },
+          {
+            "key": "eau",
+            "label": "Emiratele Arabe Unite"
+          }
+        ]
+      },
+      "departure_city": {
+        "tag_prefix": "plecare_",
+        "field_key": "oras_plecare",
+        "multi": false,
+        "values": [
+          {
+            "key": "cluj",
+            "label": "Cluj-Napoca"
+          },
+          {
+            "key": "bucuresti",
+            "label": "București"
+          },
+          {
+            "key": "iasi",
+            "label": "Iași"
+          },
+          {
+            "key": "timisoara",
+            "label": "Timișoara"
+          },
+          {
+            "key": "sibiu",
+            "label": "Sibiu"
+          },
+          {
+            "key": "oradea",
+            "label": "Oradea"
+          },
+          {
+            "key": "brasov",
+            "label": "Brașov"
+          },
+          {
+            "key": "constanta",
+            "label": "Constanța"
+          },
+          {
+            "key": "budapesta",
+            "label": "Budapesta"
+          },
+          {
+            "key": "chisinau",
+            "label": "Chișinău"
+          },
+          {
+            "key": "belgrad",
+            "label": "Belgrad"
+          }
+        ]
+      },
+      "transport": {
+        "tag_prefix": "transport_",
+        "field_key": "tip_transport",
+        "multi": false,
+        "values": [
+          {
+            "key": "avion",
+            "label": "Avion"
+          }
+        ]
+      },
+      "budget": {
+        "tag_prefix": "buget_",
+        "field_key": "buget_estimat",
+        "multi": false,
+        "values": [
+          {
+            "key": "sub_700",
+            "label": "sub 700€",
+            "min": 0,
+            "max": 699
+          },
+          {
+            "key": "700_1000",
+            "label": "700–1000€",
+            "min": 700,
+            "max": 1000
+          },
+          {
+            "key": "1000_1500",
+            "label": "1000–1500€",
+            "min": 1000,
+            "max": 1500
+          },
+          {
+            "key": "peste_1500",
+            "label": "peste 1500€",
+            "min": 1500,
+            "max": null
+          }
+        ]
+      },
+      "duration": {
+        "tag_prefix": "durata_",
+        "field_key": "durata_preferata",
+        "multi": false,
+        "values": [
+          {
+            "key": "5",
+            "label": "5 nopți"
+          },
+          {
+            "key": "7",
+            "label": "7 nopți"
+          },
+          {
+            "key": "10",
+            "label": "10 nopți"
+          },
+          {
+            "key": "14",
+            "label": "14 nopți"
+          }
+        ]
+      },
+      "hotel_category": {
+        "tag_prefix": "hotel_",
+        "field_key": "categoria_hotel",
+        "multi": false,
+        "values": [
+          {
+            "key": "3s",
+            "label": "3*"
+          },
+          {
+            "key": "4s",
+            "label": "4*"
+          },
+          {
+            "key": "5s",
+            "label": "5*"
+          }
+        ]
+      },
+      "meal_plan": {
+        "tag_prefix": "masa_",
+        "field_key": "regim_masa",
+        "multi": false,
+        "values": [
+          {
+            "key": "mic_dejun",
+            "label": "Mic dejun"
+          },
+          {
+            "key": "demipensiune",
+            "label": "Demipensiune"
+          },
+          {
+            "key": "ai",
+            "label": "All Inclusive"
+          },
+          {
+            "key": "uai",
+            "label": "Ultra All Inclusive"
+          }
+        ]
+      },
+      "luggage": {
+        "tag_prefix": "bagaj_",
+        "field_key": "bagaj",
+        "multi": false,
+        "values": [
+          {
+            "key": "cabina",
+            "label": "Doar cabină"
+          },
+          {
+            "key": "inclus",
+            "label": "Bagaj inclus"
+          }
+        ]
+      },
+      "tourist_type": {
+        "tag_prefix": "turist_",
+        "field_key": "tip_turist",
+        "multi": false,
+        "values": [
+          {
+            "key": "familie",
+            "label": "Familie"
+          },
+          {
+            "key": "cuplu",
+            "label": "Cuplu"
+          },
+          {
+            "key": "senior",
+            "label": "Senior"
+          },
+          {
+            "key": "grup_prieteni",
+            "label": "Grup de prieteni"
+          },
+          {
+            "key": "solo",
+            "label": "Solo"
+          }
+        ]
+      },
+      "period": {
+        "tag_prefix": "perioada_",
+        "field_key": "perioada_preferata",
+        "multi": true,
+        "values": [
+          {
+            "key": "mai",
+            "label": "Mai"
+          },
+          {
+            "key": "iunie",
+            "label": "Iunie"
+          },
+          {
+            "key": "iulie",
+            "label": "Iulie"
+          },
+          {
+            "key": "august",
+            "label": "August"
+          },
+          {
+            "key": "septembrie",
+            "label": "Septembrie"
+          },
+          {
+            "key": "octombrie",
+            "label": "Octombrie"
+          }
+        ]
+      },
+      "booking_status": {
+        "tag_prefix": "status_",
+        "field_key": "status_rezervare",
+        "multi": false,
+        "exclusive": true,
+        "values": [
+          {
+            "key": "solicitare",
+            "label": "Solicitare"
+          },
+          {
+            "key": "avans_achitat",
+            "label": "Avans achitat"
+          },
+          {
+            "key": "platit_integral",
+            "label": "Plătit integral"
+          },
+          {
+            "key": "plecat",
+            "label": "Plecat"
+          },
+          {
+            "key": "revenit",
+            "label": "Revenit"
+          }
+        ]
+      }
+    },
+    "system_tag_prefixes": {
+      "consent": "consim_",
+      "optout": "optout_",
+      "flow_state": "flux_",
+      "source": "sursa_",
+      "lifecycle": "ciclu_"
+    }
+  },
+  "custom_fields": [
+    {
+      "key": "oras_plecare",
+      "name": "Oraș de plecare",
+      "dataType": "SINGLE_OPTIONS",
+      "axis": "departure_city",
+      "group": "Preferințe de călătorie"
+    },
+    {
+      "key": "destinatii_favorite",
+      "name": "Destinații favorite",
+      "dataType": "MULTIPLE_OPTIONS",
+      "axis": "destination",
+      "group": "Preferințe de călătorie"
+    },
+    {
+      "key": "tip_transport",
+      "name": "Tip transport",
+      "dataType": "SINGLE_OPTIONS",
+      "axis": "transport",
+      "group": "Preferințe de călătorie"
+    },
+    {
+      "key": "buget_estimat",
+      "name": "Buget estimat",
+      "dataType": "SINGLE_OPTIONS",
+      "axis": "budget",
+      "group": "Preferințe de călătorie"
+    },
+    {
+      "key": "durata_preferata",
+      "name": "Durată preferată",
+      "dataType": "SINGLE_OPTIONS",
+      "axis": "duration",
+      "group": "Preferințe de călătorie"
+    },
+    {
+      "key": "categoria_hotel",
+      "name": "Categoria hotel",
+      "dataType": "SINGLE_OPTIONS",
+      "axis": "hotel_category",
+      "group": "Preferințe de călătorie"
+    },
+    {
+      "key": "regim_masa",
+      "name": "Regim de masă",
+      "dataType": "SINGLE_OPTIONS",
+      "axis": "meal_plan",
+      "group": "Preferințe de călătorie"
+    },
+    {
+      "key": "bagaj",
+      "name": "Bagaj",
+      "dataType": "SINGLE_OPTIONS",
+      "axis": "luggage",
+      "group": "Preferințe de călătorie"
+    },
+    {
+      "key": "tip_turist",
+      "name": "Tip turist",
+      "dataType": "SINGLE_OPTIONS",
+      "axis": "tourist_type",
+      "group": "Preferințe de călătorie"
+    },
+    {
+      "key": "perioada_preferata",
+      "name": "Perioada preferată",
+      "dataType": "MULTIPLE_OPTIONS",
+      "axis": "period",
+      "group": "Preferințe de călătorie"
+    },
+    {
+      "key": "status_rezervare",
+      "name": "Status rezervare curentă",
+      "dataType": "SINGLE_OPTIONS",
+      "axis": "booking_status",
+      "group": "Operațional"
+    },
+    {
+      "key": "data_ultima_interactiune",
+      "name": "Data ultimei interacțiuni",
+      "dataType": "DATE",
+      "group": "Operațional"
+    },
+    {
+      "key": "data_ultima_rezervare",
+      "name": "Data ultimei rezervări",
+      "dataType": "DATE",
+      "group": "Operațional"
+    },
+    {
+      "key": "data_plecare",
+      "name": "Data plecării",
+      "dataType": "DATE",
+      "group": "Rezervare curentă"
+    },
+    {
+      "key": "data_intoarcere",
+      "name": "Data întoarcerii",
+      "dataType": "DATE",
+      "group": "Rezervare curentă"
+    },
+    {
+      "key": "data_check_in",
+      "name": "Data check-in",
+      "dataType": "DATE",
+      "group": "Rezervare curentă"
+    },
+    {
+      "key": "destinatie_rezervata",
+      "name": "Destinația rezervată",
+      "dataType": "TEXT",
+      "group": "Rezervare curentă"
+    },
+    {
+      "key": "hotel_rezervat",
+      "name": "Hotelul rezervat",
+      "dataType": "TEXT",
+      "group": "Rezervare curentă"
+    },
+    {
+      "key": "numar_nopti",
+      "name": "Numărul de nopți",
+      "dataType": "NUMERICAL",
+      "group": "Rezervare curentă"
+    },
+    {
+      "key": "regim_masa_rezervat",
+      "name": "Tipul de masă (rezervat)",
+      "dataType": "TEXT",
+      "group": "Rezervare curentă"
+    },
+    {
+      "key": "valoare_avans",
+      "name": "Valoarea avansului achitat",
+      "dataType": "MONETARY",
+      "group": "Rezervare curentă"
+    },
+    {
+      "key": "sold_ramas",
+      "name": "Soldul rămas de achitat",
+      "dataType": "MONETARY",
+      "group": "Rezervare curentă"
+    },
+    {
+      "key": "data_limita_plata_finala",
+      "name": "Data limită plata finală",
+      "dataType": "DATE",
+      "group": "Rezervare curentă"
+    },
+    {
+      "key": "referinta_rezervare",
+      "name": "Referință rezervare (ID extern)",
+      "dataType": "TEXT",
+      "group": "Rezervare curentă"
+    },
+    {
+      "key": "consultant_alocat",
+      "name": "Consultant alocat",
+      "dataType": "TEXT",
+      "group": "Operațional"
+    },
+    {
+      "key": "consultant_email",
+      "name": "Email consultant",
+      "dataType": "TEXT",
+      "group": "Operațional"
+    },
+    {
+      "key": "consultant_telefon",
+      "name": "Telefon consultant",
+      "dataType": "PHONE",
+      "group": "Operațional"
+    },
+    {
+      "key": "consim_email",
+      "name": "Consimțământ email",
+      "dataType": "CHECKBOX",
+      "group": "Conformitate"
+    },
+    {
+      "key": "consim_email_data",
+      "name": "Consimțământ email — dată",
+      "dataType": "DATE",
+      "group": "Conformitate"
+    },
+    {
+      "key": "consim_email_sursa",
+      "name": "Consimțământ email — sursă",
+      "dataType": "TEXT",
+      "group": "Conformitate"
+    },
+    {
+      "key": "consim_sms",
+      "name": "Consimțământ SMS",
+      "dataType": "CHECKBOX",
+      "group": "Conformitate"
+    },
+    {
+      "key": "consim_sms_data",
+      "name": "Consimțământ SMS — dată",
+      "dataType": "DATE",
+      "group": "Conformitate"
+    },
+    {
+      "key": "consim_sms_sursa",
+      "name": "Consimțământ SMS — sursă",
+      "dataType": "TEXT",
+      "group": "Conformitate"
+    },
+    {
+      "key": "consim_whatsapp",
+      "name": "Consimțământ WhatsApp",
+      "dataType": "CHECKBOX",
+      "group": "Conformitate"
+    },
+    {
+      "key": "consim_whatsapp_data",
+      "name": "Consimțământ WhatsApp — dată",
+      "dataType": "DATE",
+      "group": "Conformitate"
+    },
+    {
+      "key": "consim_whatsapp_sursa",
+      "name": "Consimțământ WhatsApp — sursă",
+      "dataType": "TEXT",
+      "group": "Conformitate"
+    },
+    {
+      "key": "data_nastere",
+      "name": "Data nașterii",
+      "dataType": "DATE",
+      "group": "Date generale"
+    },
+    {
+      "key": "oras_resedinta",
+      "name": "Oraș",
+      "dataType": "TEXT",
+      "group": "Date generale"
+    },
+    {
+      "key": "ultim_mesaj_comercial",
+      "name": "Ultimul mesaj comercial (ISO)",
+      "dataType": "TEXT",
+      "group": "Guvernanță trimiteri"
+    },
+    {
+      "key": "mesaje_comerciale_7z",
+      "name": "Mesaje comerciale în ultimele 7 zile",
+      "dataType": "NUMERICAL",
+      "group": "Guvernanță trimiteri"
+    },
+    {
+      "key": "flux_activ_exclusiv",
+      "name": "Flux activ exclusiv",
+      "dataType": "TEXT",
+      "group": "Guvernanță trimiteri"
+    },
+    {
+      "key": "jurnal_trimiteri",
+      "name": "Jurnal trimiteri (JSON)",
+      "dataType": "LARGE_TEXT",
+      "group": "Guvernanță trimiteri"
+    }
+  ],
+  "custom_values": [
+    {
+      "key": "agency_name",
+      "from": "client.agency_name"
+    },
+    {
+      "key": "product_name",
+      "from": "client.product_name"
+    },
+    {
+      "key": "support_hours",
+      "from": "client.support_hours"
+    },
+    {
+      "key": "deposit_percent",
+      "from": "booking.deposit_percent"
+    },
+    {
+      "key": "final_payment_days_before",
+      "from": "booking.final_payment_days_before_departure"
+    },
+    {
+      "key": "unsubscribe_url",
+      "from": "compliance.unsubscribe_url"
+    },
+    {
+      "key": "positioning_statement",
+      "from": "brand_voice.positioning_statement"
+    }
+  ],
+  "booking": {
+    "deposit_percent": 20,
+    "deposit_percent_confirmed": false,
+    "final_payment_days_before_departure": 30,
+    "final_payment_days_confirmed": false,
+    "source_of_truth": "TBD — see docs/02-intrebari-deschise.md Q9",
+    "note": "deposit_percent si final_payment_days_before_departure sunt valorile exemplu din brief; NU se folosesc in texte generate, doar ca merge fields din date reale."
+  },
+  "consultants": {
+    "assignment_strategy": "round_robin",
+    "fallback_consultant_id": "TBD",
+    "reassign_when_unavailable_after_hours": 4,
+    "list": [
+      {
+        "id": "TBD",
+        "name": "TBD — see docs/02-intrebari-deschise.md Q12",
+        "email": "TBD",
+        "phone": "TBD",
+        "whatsapp": "TBD",
+        "ghl_user_id": "TBD",
+        "active": true,
+        "destinations": []
+      }
+    ]
+  },
+  "sending_rules": {
+    "quiet_hours": {
+      "timezone_source": "client.timezone",
+      "per_channel": {
+        "email": {
+          "enforced": false
+        },
+        "sms": {
+          "enforced": true,
+          "start": "09:00",
+          "end": "20:00"
+        },
+        "whatsapp": {
+          "enforced": true,
+          "start": "09:00",
+          "end": "20:00"
+        }
+      },
+      "defer_strategy": "next_window_start"
+    },
+    "frequency_cap": {
+      "commercial": {
+        "max_messages": 3,
+        "rolling_days": 7
+      },
+      "min_hours_between_commercial": 24,
+      "transactional_bypasses_cap": true
+    },
+    "suppression": {
+      "commercial_flow_ids": [
+        "nurturing",
+        "early_booking",
+        "last_minute",
+        "personalized_offers",
+        "birthday",
+        "reactivation_6m",
+        "reactivation_12m",
+        "referral",
+        "offer_no_response",
+        "review_request"
+      ],
+      "exclusive_flow_ids": [
+        "pre_departure",
+        "in_trip",
+        "pre_return"
+      ],
+      "rule": "cat timp contactul are un flux din exclusive_flow_ids activ, orice mesaj cu flow_id din commercial_flow_ids este suprimat (nu amanat)."
+    },
+    "idempotency": {
+      "key_template": "{{client_id}}:{{contact_id}}:{{flow_id}}:{{step_id}}:{{occurrence_key}}",
+      "store": "contact_field",
+      "field_key": "jurnal_trimiteri",
+      "ttl_days": 400
+    },
+    "log": {
+      "field_key": "jurnal_trimiteri",
+      "retention_days": 400,
+      "human_readable_fields": {
+        "last_commercial": "ultim_mesaj_comercial",
+        "count_rolling": "mesaje_comerciale_7z"
+      }
+    }
+  },
+  "compliance": {
+    "consent_required_per_channel": true,
+    "consent_fields": {
+      "email": {
+        "flag": "consim_email",
+        "date": "consim_email_data",
+        "source": "consim_email_sursa"
+      },
+      "sms": {
+        "flag": "consim_sms",
+        "date": "consim_sms_data",
+        "source": "consim_sms_sursa"
+      },
+      "whatsapp": {
+        "flag": "consim_whatsapp",
+        "date": "consim_whatsapp_data",
+        "source": "consim_whatsapp_sursa"
+      }
+    },
+    "optout_tags": {
+      "email": "optout_email",
+      "sms": "optout_sms",
+      "whatsapp": "optout_whatsapp"
+    },
+    "sms_stop_keywords": [
+      "STOP",
+      "OPRESTE",
+      "OPREȘTE",
+      "DEZABONARE"
+    ],
+    "sms_stop_reply": "Ai fost dezabonat. Nu vei mai primi mesaje comerciale de la {{agency_name}}.",
+    "unsubscribe_url": "TBD",
+    "unsubscribe_required_in_commercial_email": true,
+    "pii_to_claude": "forbidden",
+    "data_residency_note": "Datele de contact raman in GHL si n8n. Prompturile catre Claude API contin doar placeholdere, niciodata date reale de client."
+  },
+  "content": {
+    "mix_targets": {
+      "inspiratie": 0.4,
+      "educatie": 0.2,
+      "incredere": 0.2,
+      "oferta": 0.2
+    },
+    "mix_measurement_window_days": 30,
+    "generation": {
+      "mode": "batch_pregenerated_human_reviewed",
+      "live_generation_allowed": false,
+      "review_required_before_upload": true,
+      "variants_per_cell": 2
+    },
+    "forbidden_in_generated": {
+      "patterns": [
+        "\\d+\\s?%",
+        "\\d+[\\.,]?\\d*\\s?(€|EUR|eur|lei|RON)",
+        "(mai\\s+sunt|ultimele|au\\s+r[aă]mas)\\s+\\d+\\s+locuri",
+        "\\b\\d{1,2}[\\./-]\\d{1,2}([\\./-]\\d{2,4})?\\b",
+        "\\bhotel(ul)?\\s+[A-ZȘȚĂÎÂ][\\w\\-]+"
+      ],
+      "reason": "preturi, procente, disponibilitati, date calendaristice si nume de hoteluri intra EXCLUSIV ca merge fields sau text scris de om"
+    },
+    "sms_limits": {
+      "max_chars_gsm7": 320,
+      "warn_chars": 160
+    }
+  },
+  "merge_fields": [
+    {
+      "token": "prenume",
+      "source": "contact.firstName",
+      "fallback_strategy": "alternate_line",
+      "fallback_value": "",
+      "alternate_line": "Bună!",
+      "primary_line": "Bună, {{prenume}}!"
+    },
+    {
+      "token": "destinatie_rezervata",
+      "source": "custom_field.destinatie_rezervata",
+      "fallback_strategy": "block_send"
+    },
+    {
+      "token": "hotel_rezervat",
+      "source": "custom_field.hotel_rezervat",
+      "fallback_strategy": "block_send"
+    },
+    {
+      "token": "oras_plecare",
+      "source": "custom_field.oras_plecare",
+      "fallback_strategy": "block_send"
+    },
+    {
+      "token": "data_plecare",
+      "source": "custom_field.data_plecare",
+      "format": "d MMMM yyyy",
+      "fallback_strategy": "block_send"
+    },
+    {
+      "token": "numar_nopti",
+      "source": "custom_field.numar_nopti",
+      "fallback_strategy": "block_send"
+    },
+    {
+      "token": "regim_masa_rezervat",
+      "source": "custom_field.regim_masa_rezervat",
+      "fallback_strategy": "omit_sentence"
+    },
+    {
+      "token": "valoare_avans",
+      "source": "custom_field.valoare_avans",
+      "format": "currency",
+      "fallback_strategy": "block_send"
+    },
+    {
+      "token": "sold_ramas",
+      "source": "custom_field.sold_ramas",
+      "format": "currency",
+      "fallback_strategy": "block_send"
+    },
+    {
+      "token": "data_limita_plata_finala",
+      "source": "custom_field.data_limita_plata_finala",
+      "format": "d MMMM yyyy",
+      "fallback_strategy": "block_send"
+    },
+    {
+      "token": "consultant_name",
+      "source": "custom_field.consultant_alocat",
+      "fallback_strategy": "value",
+      "fallback_value": "Echipa Dor Travel"
+    },
+    {
+      "token": "consultant_email",
+      "source": "custom_field.consultant_email",
+      "fallback_strategy": "value",
+      "fallback_value": "TBD"
+    },
+    {
+      "token": "consultant_phone",
+      "source": "custom_field.consultant_telefon",
+      "fallback_strategy": "value",
+      "fallback_value": "TBD"
+    },
+    {
+      "token": "agency_name",
+      "source": "config.client.agency_name",
+      "fallback_strategy": "block_send"
+    }
+  ],
+  "flows": {
+    "welcome": {
+      "enabled": true,
+      "phase": 1,
+      "kind": "lifecycle",
+      "owner": "n8n",
+      "trigger": {
+        "type": "tag_added",
+        "tag": "ciclu_import"
+      },
+      "steps": [
+        {
+          "id": "w1",
+          "offset": {
+            "minutes": 5
+          },
+          "channel": "email",
+          "category": "incredere",
+          "template": "welcome_email_1",
+          "cta": "preferences_form"
+        }
+      ]
+    },
+    "preferences_update": {
+      "enabled": true,
+      "phase": 1,
+      "kind": "transactional",
+      "owner": "n8n",
+      "trigger": {
+        "type": "webhook",
+        "path": "preferences"
+      },
+      "steps": [
+        {
+          "id": "p1",
+          "offset": {
+            "minutes": 0
+          },
+          "channel": "email",
+          "category": "incredere",
+          "template": "preferences_confirm_email"
+        }
+      ]
+    },
+    "offer_request": {
+      "enabled": true,
+      "phase": 1,
+      "kind": "transactional",
+      "owner": "n8n",
+      "trigger": {
+        "type": "tag_added",
+        "tag": "flux_solicitare_oferta"
+      },
+      "steps": [
+        {
+          "id": "o1",
+          "offset": {
+            "minutes": 0
+          },
+          "channel": "email",
+          "category": "incredere",
+          "template": "offer_request_ack_email"
+        },
+        {
+          "id": "o2",
+          "offset": {
+            "minutes": 0
+          },
+          "channel": "sms",
+          "category": "incredere",
+          "template": "offer_request_ack_sms"
+        },
+        {
+          "id": "o3",
+          "offset": {
+            "minutes": 0
+          },
+          "channel": "task",
+          "assignee": "consultant",
+          "template": "task_offer_request"
+        }
+      ]
+    },
+    "offer_no_response": {
+      "enabled": true,
+      "phase": 1,
+      "kind": "commercial",
+      "owner": "n8n",
+      "trigger": {
+        "type": "tag_added",
+        "tag": "flux_oferta_trimisa"
+      },
+      "exit_conditions": [
+        "reply_received",
+        "tag:status_avans_achitat",
+        "tag:optout_email"
+      ],
+      "steps": [
+        {
+          "id": "n1",
+          "offset": {
+            "hours": 48
+          },
+          "channel": "email",
+          "category": "oferta",
+          "template": "offer_followup_48h_email"
+        },
+        {
+          "id": "n2",
+          "offset": {
+            "days": 5
+          },
+          "channel": "sms",
+          "category": "oferta",
+          "template": "offer_followup_5d_sms",
+          "expects_reply_keyword": "DA"
+        }
+      ]
+    },
+    "booking_confirmed": {
+      "enabled": true,
+      "phase": 1,
+      "kind": "transactional",
+      "owner": "n8n",
+      "trigger": {
+        "type": "field_changed",
+        "field": "status_rezervare",
+        "to": "avans_achitat"
+      },
+      "steps": [
+        {
+          "id": "b1",
+          "offset": {
+            "minutes": 0
+          },
+          "channel": "email",
+          "category": "incredere",
+          "template": "booking_confirmed_email"
+        },
+        {
+          "id": "b2",
+          "offset": {
+            "minutes": 0
+          },
+          "channel": "email",
+          "category": "incredere",
+          "template": "deposit_received_email"
+        }
+      ]
+    },
+    "pre_departure": {
+      "enabled": true,
+      "phase": 1,
+      "kind": "transactional",
+      "owner": "n8n",
+      "exclusive": true,
+      "trigger": {
+        "type": "scheduled_scan",
+        "cron": "0 8 * * *",
+        "anchor_field": "data_plecare"
+      },
+      "steps": [
+        {
+          "id": "d35",
+          "offset": {
+            "days_before_anchor": 35
+          },
+          "channel": "email",
+          "category": "incredere",
+          "template": "pre_departure_35d_email"
+        },
+        {
+          "id": "d30",
+          "offset": {
+            "days_before_anchor": 30
+          },
+          "channel": "sms",
+          "category": "incredere",
+          "template": "pre_departure_30d_sms"
+        },
+        {
+          "id": "d29_overdue",
+          "offset": {
+            "days_before_anchor": 29
+          },
+          "condition": "sold_ramas > 0",
+          "channel": "email",
+          "category": "incredere",
+          "template": "final_payment_overdue_email"
+        },
+        {
+          "id": "paid_full",
+          "offset": {
+            "on_event": "status_rezervare=platit_integral"
+          },
+          "channel": "email",
+          "category": "incredere",
+          "template": "final_payment_confirmed_email"
+        },
+        {
+          "id": "d14",
+          "offset": {
+            "days_before_anchor": 14
+          },
+          "channel": "email",
+          "category": "educatie",
+          "template": "pre_departure_14d_email"
+        },
+        {
+          "id": "d7",
+          "offset": {
+            "days_before_anchor": 7
+          },
+          "channel": "sms",
+          "category": "incredere",
+          "template": "pre_departure_7d_sms"
+        },
+        {
+          "id": "d1",
+          "offset": {
+            "days_before_anchor": 1
+          },
+          "channel": "whatsapp",
+          "category": "incredere",
+          "template": "pre_departure_1d_wa"
+        }
+      ]
+    },
+    "in_trip": {
+      "enabled": true,
+      "phase": 1,
+      "kind": "transactional",
+      "owner": "n8n",
+      "exclusive": true,
+      "trigger": {
+        "type": "scheduled_scan",
+        "cron": "0 10 * * *",
+        "anchor_field": "data_check_in"
+      },
+      "steps": [
+        {
+          "id": "t1",
+          "offset": {
+            "days_after_anchor": 1
+          },
+          "channel": "whatsapp",
+          "category": "incredere",
+          "template": "in_trip_checkin_wa"
+        }
+      ]
+    },
+    "pre_return": {
+      "enabled": true,
+      "phase": 1,
+      "kind": "transactional",
+      "owner": "n8n",
+      "exclusive": true,
+      "trigger": {
+        "type": "scheduled_scan",
+        "cron": "0 10 * * *",
+        "anchor_field": "data_intoarcere"
+      },
+      "steps": [
+        {
+          "id": "r1",
+          "offset": {
+            "days_before_anchor": 1
+          },
+          "channel": "whatsapp",
+          "category": "incredere",
+          "template": "pre_return_wa"
+        }
+      ]
+    },
+    "post_return": {
+      "enabled": true,
+      "phase": 1,
+      "kind": "transactional",
+      "owner": "n8n",
+      "trigger": {
+        "type": "scheduled_scan",
+        "cron": "0 11 * * *",
+        "anchor_field": "data_intoarcere"
+      },
+      "steps": [
+        {
+          "id": "pr1",
+          "offset": {
+            "hours_after_anchor": 24
+          },
+          "channel": "email",
+          "category": "incredere",
+          "template": "post_return_feedback_email"
+        }
+      ]
+    },
+    "review_request": {
+      "enabled": true,
+      "phase": 3,
+      "kind": "commercial",
+      "owner": "n8n",
+      "trigger": {
+        "type": "scheduled_scan",
+        "cron": "0 11 * * *",
+        "anchor_field": "data_intoarcere"
+      },
+      "steps": [
+        {
+          "id": "rv1",
+          "offset": {
+            "days_after_anchor": 5
+          },
+          "channel": "email",
+          "category": "incredere",
+          "template": "review_request_email"
+        }
+      ]
+    },
+    "nurturing": {
+      "enabled": true,
+      "phase": 2,
+      "kind": "commercial",
+      "owner": "n8n",
+      "segmented_by": [
+        "destination"
+      ],
+      "trigger": {
+        "type": "cron",
+        "cron": "0 9 * * 2"
+      },
+      "mix_controlled": true,
+      "steps": [
+        {
+          "id": "nu1",
+          "offset": {
+            "days": 0
+          },
+          "channel": "email",
+          "category": "dynamic_from_mix",
+          "template": "nurturing_email"
+        }
+      ],
+      "content_varies_by": [
+        "destination"
+      ]
+    },
+    "early_booking": {
+      "enabled": true,
+      "phase": 2,
+      "kind": "commercial",
+      "owner": "n8n",
+      "segmented_by": [
+        "destination",
+        "budget",
+        "period"
+      ],
+      "trigger": {
+        "type": "manual_campaign"
+      },
+      "steps": [
+        {
+          "id": "eb1",
+          "offset": {
+            "days": 0
+          },
+          "channel": "email",
+          "category": "oferta",
+          "template": "early_booking_email"
+        },
+        {
+          "id": "eb2",
+          "offset": {
+            "days": 2
+          },
+          "channel": "sms",
+          "category": "oferta",
+          "template": "early_booking_sms"
+        }
+      ],
+      "content_varies_by": [
+        "destination"
+      ]
+    },
+    "last_minute": {
+      "enabled": true,
+      "phase": 2,
+      "kind": "commercial",
+      "owner": "n8n",
+      "segmented_by": [
+        "destination",
+        "budget",
+        "tourist_type",
+        "period"
+      ],
+      "trigger": {
+        "type": "manual_campaign"
+      },
+      "steps": [
+        {
+          "id": "lm1",
+          "offset": {
+            "days": 0
+          },
+          "channel": "email",
+          "category": "oferta",
+          "template": "last_minute_email"
+        },
+        {
+          "id": "lm2",
+          "offset": {
+            "hours": 6
+          },
+          "channel": "sms",
+          "category": "oferta",
+          "template": "last_minute_sms"
+        }
+      ],
+      "content_varies_by": [
+        "destination",
+        "tourist_type"
+      ]
+    },
+    "personalized_offers": {
+      "enabled": true,
+      "phase": 2,
+      "kind": "commercial",
+      "owner": "n8n",
+      "segmented_by": [
+        "destination",
+        "budget",
+        "tourist_type",
+        "period",
+        "departure_city"
+      ],
+      "trigger": {
+        "type": "manual_campaign"
+      },
+      "steps": [
+        {
+          "id": "po1",
+          "offset": {
+            "days": 0
+          },
+          "channel": "email",
+          "category": "oferta",
+          "template": "personalized_offer_email"
+        }
+      ],
+      "content_varies_by": [
+        "destination"
+      ]
+    },
+    "birthday": {
+      "enabled": true,
+      "phase": 2,
+      "kind": "commercial",
+      "owner": "n8n",
+      "trigger": {
+        "type": "scheduled_scan",
+        "cron": "0 8 * * *",
+        "anchor_field": "data_nastere"
+      },
+      "steps": [
+        {
+          "id": "bd1",
+          "offset": {
+            "days_after_anchor": 0
+          },
+          "channel": "email",
+          "category": "incredere",
+          "template": "birthday_email"
+        }
+      ]
+    },
+    "referral": {
+      "enabled": false,
+      "phase": 3,
+      "kind": "commercial",
+      "owner": "n8n",
+      "blocked_by": "docs/02-intrebari-deschise.md Q10 — mecanismul nu este definit in brief",
+      "trigger": {
+        "type": "tag_added",
+        "tag": "ciclu_client_fidel"
+      },
+      "steps": []
+    },
+    "reactivation_6m": {
+      "enabled": true,
+      "phase": 3,
+      "kind": "commercial",
+      "owner": "n8n",
+      "trigger": {
+        "type": "scheduled_scan",
+        "cron": "0 9 * * 3",
+        "anchor_field": "data_ultima_interactiune"
+      },
+      "steps": [
+        {
+          "id": "ra1",
+          "offset": {
+            "days_after_anchor": 180
+          },
+          "channel": "email",
+          "category": "inspiratie",
+          "template": "reactivation_6m_email"
+        }
+      ]
+    },
+    "reactivation_12m": {
+      "enabled": true,
+      "phase": 3,
+      "kind": "commercial",
+      "owner": "n8n",
+      "trigger": {
+        "type": "scheduled_scan",
+        "cron": "0 9 * * 4",
+        "anchor_field": "data_ultima_rezervare"
+      },
+      "steps": [
+        {
+          "id": "rb1",
+          "offset": {
+            "days_after_anchor": 275
+          },
+          "channel": "email",
+          "category": "inspiratie",
+          "template": "reactivation_12m_email"
+        }
+      ]
+    }
+  },
+  "consultant_tasks": {
+    "create_on": [
+      {
+        "event": "offer_requested",
+        "title": "Solicitare ofertă — {{prenume}}",
+        "due_in_hours": 2
+      },
+      {
+        "event": "catalog_downloaded",
+        "title": "A descărcat catalogul — {{prenume}}",
+        "due_in_hours": 24
+      },
+      {
+        "event": "repeat_offer_open",
+        "title": "A deschis aceeași ofertă de {{open_count}} ori — {{prenume}}",
+        "due_in_hours": 4,
+        "threshold": 3
+      },
+      {
+        "event": "email_reply",
+        "title": "A răspuns la email — {{prenume}}",
+        "due_in_hours": 2
+      },
+      {
+        "event": "booking_abandoned",
+        "title": "Nu a finalizat rezervarea — {{prenume}}",
+        "due_in_hours": 24
+      },
+      {
+        "event": "sms_reply_yes",
+        "title": "A răspuns DA la SMS — {{prenume}}",
+        "due_in_hours": 1
+      }
+    ]
+  },
+  "kpi": {
+    "metrics": [
+      "open_rate",
+      "click_rate",
+      "reply_rate",
+      "offer_requests",
+      "booking_conversion",
+      "avg_booking_value",
+      "revenue_per_flow",
+      "reactivated_contacts",
+      "repeat_customers"
+    ],
+    "attribution": {
+      "model": "last_touch",
+      "window_days": 30,
+      "flow_tag_prefix": "attr_"
+    }
+  }
+}

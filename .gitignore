@@ -1,0 +1,9 @@
+node_modules/
+.env
+.env.*
+!.env.example
+*.local.json
+content/exports/*.csv
+content/exports/*.json
+!content/exports/.gitkeep
+.DS_Store

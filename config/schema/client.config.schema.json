@@ -1,0 +1,1181 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://itpusor.dev/schemas/client.config.schema.json",
+  "title": "Configurație client — sistem automatizare marketing turism",
+  "description": "Un client nou se adaugă completând acest fișier. Nicio valoare specifică unui client nu are voie să existe într-un node n8n.",
+  "type": "object",
+  "required": [
+    "config_version",
+    "client",
+    "brand_voice",
+    "integrations",
+    "taxonomy",
+    "custom_fields",
+    "booking",
+    "consultants",
+    "sending_rules",
+    "compliance",
+    "content",
+    "merge_fields",
+    "flows"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "_instructions": {
+      "type": "string",
+      "description": "Notă liberă pentru cel care completează fișierul. Ignorată de runtime."
+    },
+    "config_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "client": {
+      "type": "object",
+      "required": [
+        "id",
+        "agency_name",
+        "product_name",
+        "locale",
+        "timezone",
+        "currency"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$",
+          "description": "Slug folosit în chei de idempotență și în log."
+        },
+        "agency_name": {
+          "type": "string"
+        },
+        "product_name": {
+          "type": "string"
+        },
+        "legal_name": {
+          "type": "string"
+        },
+        "website": {
+          "type": "string"
+        },
+        "locale": {
+          "type": "string",
+          "examples": [
+            "ro-RO"
+          ]
+        },
+        "timezone": {
+          "type": "string",
+          "description": "IANA tz, ex. Europe/Bucharest. Baza pentru ferestrele orare."
+        },
+        "currency": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 3
+        },
+        "business_model": {
+          "type": "string"
+        },
+        "support_hours": {
+          "type": "string"
+        }
+      }
+    },
+    "brand_voice": {
+      "type": "object",
+      "required": [
+        "tone",
+        "avoid",
+        "signature_template"
+      ],
+      "properties": {
+        "tone": {
+          "type": "string"
+        },
+        "person": {
+          "type": "string"
+        },
+        "avoid": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "signature_template": {
+          "type": "string"
+        },
+        "positioning_statement": {
+          "type": "string"
+        }
+      }
+    },
+    "integrations": {
+      "type": "object",
+      "required": [
+        "ghl",
+        "claude",
+        "email",
+        "sms",
+        "whatsapp",
+        "reporting",
+        "alerting"
+      ],
+      "properties": {
+        "ghl": {
+          "type": "object",
+          "required": [
+            "api_base",
+            "auth_mode",
+            "credential_name_n8n",
+            "location_id_env",
+            "api_versions",
+            "token_env"
+          ],
+          "properties": {
+            "api_base": {
+              "type": "string"
+            },
+            "auth_mode": {
+              "enum": [
+                "private_integration_token",
+                "oauth2"
+              ],
+              "description": "private_integration_token este recomandat: node-ul nativ OAuth2 pierde silențios refresh token-ul."
+            },
+            "credential_name_n8n": {
+              "type": "string",
+              "description": "DOAR numele credenționalului din n8n. Niciodată valoarea."
+            },
+            "location_id_env": {
+              "type": "string"
+            },
+            "api_versions": {
+              "type": "object",
+              "required": [
+                "default"
+              ],
+              "properties": {
+                "default": {
+                  "type": "string"
+                },
+                "conversations": {
+                  "type": "string"
+                }
+              },
+              "description": "Header-ul `Version` este obligatoriu pe GHL API v2; resurse diferite cer versiuni diferite."
+            },
+            "required_pit_scopes": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "token_env": {
+              "type": "string",
+              "description": "Numele variabilei de mediu care ține Private Integration Token-ul. NICIODATĂ valoarea."
+            },
+            "secrets_mode": {
+              "enum": [
+                "env",
+                "n8n_credential"
+              ],
+              "description": "env = un singur n8n servește mai mulți clienți, token-ul se ia din $env după client_id (clientul nou nu cere editarea niciunui node). n8n_credential = o credențială Header Auth mapată la import, necesară pe n8n Cloud unde $env nu e disponibil."
+            }
+          }
+        },
+        "claude": {
+          "type": "object",
+          "required": [
+            "api_base",
+            "credential_name_n8n",
+            "model"
+          ],
+          "properties": {
+            "api_base": {
+              "type": "string"
+            },
+            "credential_name_n8n": {
+              "type": "string"
+            },
+            "model": {
+              "type": "string"
+            },
+            "batch_model": {
+              "type": "string"
+            },
+            "max_output_tokens": {
+              "type": "integer",
+              "minimum": 256
+            }
+          }
+        },
+        "whatsapp": {
+          "type": "object",
+          "required": [
+            "enabled",
+            "provider",
+            "session_window_hours"
+          ],
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "provider": {
+              "type": "string"
+            },
+            "credential_name_n8n": {
+              "type": "string"
+            },
+            "sender_id_env": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "session_window_hours": {
+              "type": "integer"
+            },
+            "templates": {
+              "type": "object",
+              "description": "map template_key -> { name, language, approved, variables[] }",
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "language": {
+                    "type": "string"
+                  },
+                  "approved": {
+                    "type": "boolean"
+                  },
+                  "variables": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "sms": {
+          "type": "object",
+          "required": [
+            "provider",
+            "max_segments"
+          ],
+          "properties": {
+            "provider": {
+              "type": "string"
+            },
+            "sender_id_env": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "max_segments": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "unicode_allowed": {
+              "type": "boolean"
+            }
+          }
+        },
+        "email": {
+          "type": "object",
+          "required": [
+            "provider",
+            "from_name",
+            "from_address"
+          ],
+          "properties": {
+            "provider": {
+              "type": "string"
+            },
+            "from_name": {
+              "type": "string"
+            },
+            "from_address": {
+              "type": "string"
+            },
+            "reply_to": {
+              "type": "string"
+            },
+            "sending_domain": {
+              "type": "string"
+            },
+            "dns_verified": {
+              "type": "boolean",
+              "description": "SPF/DKIM/DMARC verificate. false blochează campaniile de volum."
+            }
+          }
+        },
+        "reporting": {
+          "type": "object",
+          "required": [
+            "sink"
+          ],
+          "properties": {
+            "sink": {
+              "enum": [
+                "google_sheets",
+                "bigquery",
+                "postgres",
+                "none"
+              ]
+            },
+            "credential_name_n8n": {
+              "type": "string"
+            },
+            "spreadsheet_id_env": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "tabs": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "alerting": {
+          "type": "object",
+          "required": [
+            "channel",
+            "min_severity"
+          ],
+          "properties": {
+            "channel": {
+              "enum": [
+                "email",
+                "slack",
+                "webhook"
+              ]
+            },
+            "to_env": {
+              "type": "string"
+            },
+            "min_severity": {
+              "enum": [
+                "warn",
+                "error"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "taxonomy": {
+      "type": "object",
+      "required": [
+        "axes",
+        "system_tag_prefixes"
+      ],
+      "properties": {
+        "tag_case": {
+          "enum": [
+            "lower_snake"
+          ]
+        },
+        "axes": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": {
+            "type": "object",
+            "required": [
+              "tag_prefix",
+              "field_key",
+              "multi",
+              "values"
+            ],
+            "properties": {
+              "tag_prefix": {
+                "type": "string",
+                "pattern": "^[a-z0-9_]+_$",
+                "description": "Prefixul permite filtrare programatică fără liste hardcodate."
+              },
+              "field_key": {
+                "type": "string"
+              },
+              "multi": {
+                "type": "boolean"
+              },
+              "exclusive": {
+                "type": "boolean",
+                "description": "true = adăugarea unei valori elimină celelalte tag-uri de pe aceeași axă."
+              },
+              "values": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "key",
+                    "label"
+                  ],
+                  "properties": {
+                    "key": {
+                      "type": "string",
+                      "pattern": "^[a-z0-9_]+$"
+                    },
+                    "label": {
+                      "type": "string"
+                    },
+                    "min": {
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    },
+                    "max": {
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "system_tag_prefixes": {
+          "type": "object",
+          "required": [
+            "consent",
+            "optout",
+            "flow_state",
+            "source",
+            "lifecycle"
+          ],
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "custom_fields": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "key",
+          "name",
+          "dataType"
+        ],
+        "properties": {
+          "key": {
+            "type": "string",
+            "pattern": "^[a-z0-9_]+$"
+          },
+          "name": {
+            "type": "string"
+          },
+          "dataType": {
+            "enum": [
+              "TEXT",
+              "LARGE_TEXT",
+              "NUMERICAL",
+              "PHONE",
+              "MONETARY",
+              "CHECKBOX",
+              "SINGLE_OPTIONS",
+              "MULTIPLE_OPTIONS",
+              "DATE",
+              "TEXTBOX_LIST",
+              "RADIO",
+              "FILE_UPLOAD"
+            ]
+          },
+          "axis": {
+            "type": "string",
+            "description": "Dacă e setat, opțiunile se derivă din taxonomy.axes[axis].values — nu se dublează aici."
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "group": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "custom_values": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "key",
+          "from"
+        ],
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "from": {
+            "type": "string",
+            "description": "Cale dot-notation în acest config."
+          }
+        }
+      }
+    },
+    "booking": {
+      "type": "object",
+      "required": [
+        "deposit_percent",
+        "final_payment_days_before_departure"
+      ],
+      "properties": {
+        "deposit_percent": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "deposit_percent_confirmed": {
+          "type": "boolean"
+        },
+        "final_payment_days_before_departure": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "final_payment_days_confirmed": {
+          "type": "boolean"
+        },
+        "source_of_truth": {
+          "type": "string"
+        },
+        "note": {
+          "type": "string"
+        }
+      }
+    },
+    "consultants": {
+      "type": "object",
+      "required": [
+        "assignment_strategy",
+        "list"
+      ],
+      "properties": {
+        "assignment_strategy": {
+          "enum": [
+            "round_robin",
+            "by_destination",
+            "by_departure_city",
+            "manual"
+          ]
+        },
+        "fallback_consultant_id": {
+          "type": "string"
+        },
+        "reassign_when_unavailable_after_hours": {
+          "type": "integer"
+        },
+        "list": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "name",
+              "active"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "email": {
+                "type": "string"
+              },
+              "phone": {
+                "type": "string"
+              },
+              "whatsapp": {
+                "type": "string"
+              },
+              "ghl_user_id": {
+                "type": "string"
+              },
+              "active": {
+                "type": "boolean"
+              },
+              "destinations": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "sending_rules": {
+      "type": "object",
+      "required": [
+        "quiet_hours",
+        "frequency_cap",
+        "suppression",
+        "idempotency",
+        "log"
+      ],
+      "properties": {
+        "quiet_hours": {
+          "type": "object",
+          "required": [
+            "per_channel",
+            "defer_strategy"
+          ],
+          "properties": {
+            "timezone_source": {
+              "type": "string"
+            },
+            "per_channel": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "required": [
+                  "enforced"
+                ],
+                "properties": {
+                  "enforced": {
+                    "type": "boolean"
+                  },
+                  "start": {
+                    "type": "string",
+                    "pattern": "^\\d{2}:\\d{2}$"
+                  },
+                  "end": {
+                    "type": "string",
+                    "pattern": "^\\d{2}:\\d{2}$"
+                  }
+                }
+              }
+            },
+            "defer_strategy": {
+              "enum": [
+                "next_window_start",
+                "drop"
+              ]
+            }
+          }
+        },
+        "frequency_cap": {
+          "type": "object",
+          "required": [
+            "commercial",
+            "transactional_bypasses_cap"
+          ],
+          "properties": {
+            "commercial": {
+              "type": "object",
+              "required": [
+                "max_messages",
+                "rolling_days"
+              ],
+              "properties": {
+                "max_messages": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "rolling_days": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "min_hours_between_commercial": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "transactional_bypasses_cap": {
+              "type": "boolean"
+            }
+          }
+        },
+        "suppression": {
+          "type": "object",
+          "required": [
+            "commercial_flow_ids",
+            "exclusive_flow_ids"
+          ],
+          "properties": {
+            "commercial_flow_ids": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "exclusive_flow_ids": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "rule": {
+              "type": "string"
+            }
+          }
+        },
+        "idempotency": {
+          "type": "object",
+          "required": [
+            "key_template",
+            "store"
+          ],
+          "properties": {
+            "key_template": {
+              "type": "string"
+            },
+            "store": {
+              "enum": [
+                "contact_field",
+                "ghl_note",
+                "n8n_static_data",
+                "postgres"
+              ]
+            },
+            "ttl_days": {
+              "type": "integer"
+            },
+            "field_key": {
+              "type": "string"
+            }
+          }
+        },
+        "log": {
+          "type": "object",
+          "required": [
+            "field_key",
+            "retention_days"
+          ],
+          "properties": {
+            "field_key": {
+              "type": "string"
+            },
+            "retention_days": {
+              "type": "integer"
+            },
+            "human_readable_fields": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "compliance": {
+      "type": "object",
+      "required": [
+        "consent_required_per_channel",
+        "consent_fields",
+        "optout_tags",
+        "pii_to_claude"
+      ],
+      "properties": {
+        "consent_required_per_channel": {
+          "type": "boolean"
+        },
+        "consent_fields": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "required": [
+              "flag"
+            ],
+            "properties": {
+              "flag": {
+                "type": "string"
+              },
+              "date": {
+                "type": "string"
+              },
+              "source": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "optout_tags": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "sms_stop_keywords": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "sms_stop_reply": {
+          "type": "string"
+        },
+        "unsubscribe_url": {
+          "type": "string"
+        },
+        "unsubscribe_required_in_commercial_email": {
+          "type": "boolean"
+        },
+        "pii_to_claude": {
+          "const": "forbidden"
+        },
+        "data_residency_note": {
+          "type": "string"
+        }
+      }
+    },
+    "content": {
+      "type": "object",
+      "required": [
+        "mix_targets",
+        "generation",
+        "forbidden_in_generated",
+        "sms_limits"
+      ],
+      "properties": {
+        "mix_targets": {
+          "type": "object",
+          "required": [
+            "inspiratie",
+            "educatie",
+            "incredere",
+            "oferta"
+          ],
+          "additionalProperties": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        },
+        "mix_measurement_window_days": {
+          "type": "integer"
+        },
+        "generation": {
+          "type": "object",
+          "required": [
+            "mode",
+            "live_generation_allowed",
+            "review_required_before_upload"
+          ],
+          "properties": {
+            "mode": {
+              "const": "batch_pregenerated_human_reviewed"
+            },
+            "live_generation_allowed": {
+              "const": false
+            },
+            "review_required_before_upload": {
+              "const": true
+            },
+            "variants_per_cell": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        },
+        "forbidden_in_generated": {
+          "type": "object",
+          "required": [
+            "patterns"
+          ],
+          "properties": {
+            "patterns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Regex-uri rulate pe textul generat înainte de review. Un hit = respins automat."
+            },
+            "reason": {
+              "type": "string"
+            }
+          }
+        },
+        "sms_limits": {
+          "type": "object",
+          "required": [
+            "max_chars_gsm7"
+          ],
+          "properties": {
+            "max_chars_gsm7": {
+              "type": "integer"
+            },
+            "warn_chars": {
+              "type": "integer"
+            }
+          }
+        }
+      }
+    },
+    "merge_fields": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "token",
+          "source",
+          "fallback_strategy"
+        ],
+        "properties": {
+          "token": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "format": {
+            "type": "string"
+          },
+          "fallback_strategy": {
+            "enum": [
+              "value",
+              "alternate_line",
+              "omit_sentence",
+              "block_send"
+            ],
+            "description": "block_send = mesajul NU pleacă dacă valoarea lipsește. Regula «Bună, {{prenume}}» gol nu pleacă niciodată."
+          },
+          "fallback_value": {
+            "type": "string"
+          },
+          "alternate_line": {
+            "type": "string"
+          },
+          "primary_line": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "flows": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "enabled",
+          "phase",
+          "kind",
+          "owner",
+          "trigger",
+          "steps"
+        ],
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "phase": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 3
+          },
+          "kind": {
+            "enum": [
+              "transactional",
+              "commercial",
+              "lifecycle"
+            ],
+            "description": "transactional trece peste plafonul de frecvență; commercial nu."
+          },
+          "owner": {
+            "enum": [
+              "n8n",
+              "ghl"
+            ],
+            "description": "Ce poate face GHL nativ rămâne în GHL."
+          },
+          "exclusive": {
+            "type": "boolean",
+            "description": "true = cât e activ, suprimă fluxurile comerciale."
+          },
+          "segmented_by": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Nume de axe din taxonomy.axes. Criteriu de AUDIENȚĂ: cine primește mesajul."
+          },
+          "content_varies_by": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Subset al segmented_by pe care se scrie text DIFERIT. Restul axelor filtrează audiența fără să multiplice numărul de variante de copy. Absent = nu variază textul."
+          },
+          "mix_controlled": {
+            "type": "boolean"
+          },
+          "blocked_by": {
+            "type": "string"
+          },
+          "exit_conditions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "trigger": {
+            "type": "object",
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "enum": [
+                  "tag_added",
+                  "field_changed",
+                  "webhook",
+                  "cron",
+                  "scheduled_scan",
+                  "manual_campaign"
+                ]
+              },
+              "tag": {
+                "type": "string"
+              },
+              "field": {
+                "type": "string"
+              },
+              "to": {
+                "type": "string"
+              },
+              "path": {
+                "type": "string"
+              },
+              "cron": {
+                "type": "string"
+              },
+              "anchor_field": {
+                "type": "string"
+              }
+            }
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "channel"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "offset": {
+                  "type": "object"
+                },
+                "channel": {
+                  "enum": [
+                    "email",
+                    "sms",
+                    "whatsapp",
+                    "task"
+                  ]
+                },
+                "category": {
+                  "enum": [
+                    "inspiratie",
+                    "educatie",
+                    "incredere",
+                    "oferta",
+                    "dynamic_from_mix"
+                  ]
+                },
+                "template": {
+                  "type": "string"
+                },
+                "condition": {
+                  "type": "string"
+                },
+                "assignee": {
+                  "type": "string"
+                },
+                "cta": {
+                  "type": "string"
+                },
+                "expects_reply_keyword": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "consultant_tasks": {
+      "type": "object",
+      "properties": {
+        "create_on": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "event",
+              "title"
+            ],
+            "properties": {
+              "event": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "due_in_hours": {
+                "type": "integer"
+              },
+              "threshold": {
+                "type": "integer"
+              }
+            }
+          }
+        }
+      }
+    },
+    "kpi": {
+      "type": "object",
+      "properties": {
+        "metrics": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "attribution": {
+          "type": "object",
+          "properties": {
+            "model": {
+              "enum": [
+                "last_touch",
+                "first_touch"
+              ]
+            },
+            "window_days": {
+              "type": "integer"
+            },
+            "flow_tag_prefix": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  }
+}

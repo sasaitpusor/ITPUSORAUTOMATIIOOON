@@ -1,0 +1,447 @@
+{
+  "$schema": "../schema/client.config.schema.json",
+  "config_version": "1.0.0",
+  "_instructions": "Copiază acest fișier ca config/clients/<client-id>.json și completează fiecare TODO. Rulează apoi `npm run validate -- <client-id>` și `npm run provision -- <client-id> --dry-run`. Dacă ai nevoie să editezi un node n8n ca să pornești clientul, arhitectura e greșită — raportează.",
+  "client": {
+    "id": "TODO-client-slug",
+    "agency_name": "TODO",
+    "product_name": "TODO",
+    "legal_name": "TODO",
+    "website": "TODO",
+    "locale": "ro-RO",
+    "timezone": "Europe/Bucharest",
+    "currency": "EUR",
+    "business_model": "TODO — ce vinde efectiv clientul (pachet complet / componente / etc.)",
+    "support_hours": "TODO"
+  },
+  "brand_voice": {
+    "tone": "TODO",
+    "person": "persoana a doua singular (tu)",
+    "avoid": [
+      "TODO — ce nu spune niciodată acest brand"
+    ],
+    "signature_template": "{{consultant_name}} — {{agency_name}}\n{{consultant_phone}} · {{consultant_email}}",
+    "positioning_statement": "TODO"
+  },
+  "integrations": {
+    "ghl": {
+      "api_base": "https://services.leadconnectorhq.com",
+      "auth_mode": "private_integration_token",
+      "credential_name_n8n": "TODO — numele credenționalului n8n, NU token-ul",
+      "location_id_env": "TODO_GHL_LOCATION_ID",
+      "api_versions": {
+        "default": "2021-07-28",
+        "conversations": "2021-04-15"
+      },
+      "required_pit_scopes": [
+        "contacts.readonly",
+        "contacts.write",
+        "locations/customFields.readonly",
+        "locations/customFields.write",
+        "locations/customValues.readonly",
+        "locations/customValues.write",
+        "locations/tags.readonly",
+        "locations/tags.write",
+        "conversations.readonly",
+        "conversations.write",
+        "conversations/message.readonly",
+        "conversations/message.write",
+        "opportunities.readonly",
+        "opportunities.write",
+        "users.readonly",
+        "workflows.readonly"
+      ],
+      "token_env": "TODO_GHL_PIT_CLIENT",
+      "secrets_mode": "env"
+    },
+    "claude": {
+      "api_base": "https://api.anthropic.com",
+      "credential_name_n8n": "TODO",
+      "model": "claude-opus-5",
+      "batch_model": "claude-sonnet-5",
+      "max_output_tokens": 4096
+    },
+    "whatsapp": {
+      "enabled": false,
+      "provider": "TODO — twilio | meta_cloud_api | 360dialog | none",
+      "credential_name_n8n": "TODO",
+      "sender_id_env": null,
+      "session_window_hours": 24,
+      "templates": {}
+    },
+    "sms": {
+      "provider": "ghl_native",
+      "sender_id_env": null,
+      "max_segments": 2,
+      "unicode_allowed": false
+    },
+    "email": {
+      "provider": "ghl_native",
+      "from_name": "TODO",
+      "from_address": "TODO",
+      "reply_to": "TODO",
+      "sending_domain": "TODO",
+      "dns_verified": false
+    },
+    "reporting": {
+      "sink": "google_sheets",
+      "credential_name_n8n": "TODO",
+      "spreadsheet_id_env": "TODO_KPI_SPREADSHEET_ID",
+      "tabs": {
+        "send_log": "send_log",
+        "flow_events": "flow_events",
+        "attribution": "attribution",
+        "content_review": "content_review"
+      }
+    },
+    "alerting": {
+      "channel": "email",
+      "to_env": "TODO_ALERT_EMAIL",
+      "min_severity": "error"
+    }
+  },
+  "taxonomy": {
+    "tag_case": "lower_snake",
+    "axes": {
+      "destination": {
+        "tag_prefix": "dest_",
+        "field_key": "destinatii_favorite",
+        "multi": true,
+        "values": [
+          {
+            "key": "todo_destinatie",
+            "label": "TODO"
+          }
+        ]
+      },
+      "departure_city": {
+        "tag_prefix": "plecare_",
+        "field_key": "oras_plecare",
+        "multi": false,
+        "values": [
+          {
+            "key": "todo_oras",
+            "label": "TODO"
+          }
+        ]
+      },
+      "transport": {
+        "tag_prefix": "transport_",
+        "field_key": "tip_transport",
+        "multi": false,
+        "values": [
+          {
+            "key": "avion",
+            "label": "Avion"
+          }
+        ]
+      },
+      "budget": {
+        "tag_prefix": "buget_",
+        "field_key": "buget_estimat",
+        "multi": false,
+        "values": [
+          {
+            "key": "todo_prag",
+            "label": "TODO",
+            "min": 0,
+            "max": null
+          }
+        ]
+      },
+      "duration": {
+        "tag_prefix": "durata_",
+        "field_key": "durata_preferata",
+        "multi": false,
+        "values": [
+          {
+            "key": "7",
+            "label": "7 nopți"
+          }
+        ]
+      },
+      "hotel_category": {
+        "tag_prefix": "hotel_",
+        "field_key": "categoria_hotel",
+        "multi": false,
+        "values": [
+          {
+            "key": "4s",
+            "label": "4*"
+          }
+        ]
+      },
+      "meal_plan": {
+        "tag_prefix": "masa_",
+        "field_key": "regim_masa",
+        "multi": false,
+        "values": [
+          {
+            "key": "ai",
+            "label": "All Inclusive"
+          }
+        ]
+      },
+      "luggage": {
+        "tag_prefix": "bagaj_",
+        "field_key": "bagaj",
+        "multi": false,
+        "values": [
+          {
+            "key": "inclus",
+            "label": "Bagaj inclus"
+          }
+        ]
+      },
+      "tourist_type": {
+        "tag_prefix": "turist_",
+        "field_key": "tip_turist",
+        "multi": false,
+        "values": [
+          {
+            "key": "familie",
+            "label": "Familie"
+          }
+        ]
+      },
+      "period": {
+        "tag_prefix": "perioada_",
+        "field_key": "perioada_preferata",
+        "multi": true,
+        "values": [
+          {
+            "key": "iulie",
+            "label": "Iulie"
+          }
+        ]
+      },
+      "booking_status": {
+        "tag_prefix": "status_",
+        "field_key": "status_rezervare",
+        "multi": false,
+        "exclusive": true,
+        "values": [
+          {
+            "key": "solicitare",
+            "label": "Solicitare"
+          },
+          {
+            "key": "avans_achitat",
+            "label": "Avans achitat"
+          },
+          {
+            "key": "platit_integral",
+            "label": "Plătit integral"
+          },
+          {
+            "key": "plecat",
+            "label": "Plecat"
+          },
+          {
+            "key": "revenit",
+            "label": "Revenit"
+          }
+        ]
+      }
+    },
+    "system_tag_prefixes": {
+      "consent": "consim_",
+      "optout": "optout_",
+      "flow_state": "flux_",
+      "source": "sursa_",
+      "lifecycle": "ciclu_"
+    }
+  },
+  "custom_fields": [],
+  "custom_values": [],
+  "booking": {
+    "deposit_percent": 0,
+    "deposit_percent_confirmed": false,
+    "final_payment_days_before_departure": 30,
+    "final_payment_days_confirmed": false,
+    "source_of_truth": "TODO — de unde vin avans/sold/dată plecare/hotel",
+    "note": "Valorile financiare nu apar niciodată în text generat; doar ca merge fields."
+  },
+  "consultants": {
+    "assignment_strategy": "round_robin",
+    "fallback_consultant_id": "TODO",
+    "reassign_when_unavailable_after_hours": 4,
+    "list": [
+      {
+        "id": "TODO",
+        "name": "TODO",
+        "email": "TODO",
+        "phone": "TODO",
+        "whatsapp": "TODO",
+        "ghl_user_id": "TODO",
+        "active": true,
+        "destinations": []
+      }
+    ]
+  },
+  "sending_rules": {
+    "quiet_hours": {
+      "timezone_source": "client.timezone",
+      "per_channel": {
+        "email": {
+          "enforced": false
+        },
+        "sms": {
+          "enforced": true,
+          "start": "09:00",
+          "end": "20:00"
+        },
+        "whatsapp": {
+          "enforced": true,
+          "start": "09:00",
+          "end": "20:00"
+        }
+      },
+      "defer_strategy": "next_window_start"
+    },
+    "frequency_cap": {
+      "commercial": {
+        "max_messages": 3,
+        "rolling_days": 7
+      },
+      "min_hours_between_commercial": 24,
+      "transactional_bypasses_cap": true
+    },
+    "suppression": {
+      "commercial_flow_ids": [
+        "nurturing",
+        "early_booking",
+        "last_minute",
+        "personalized_offers",
+        "birthday",
+        "reactivation_6m",
+        "reactivation_12m",
+        "referral",
+        "offer_no_response",
+        "review_request"
+      ],
+      "exclusive_flow_ids": [
+        "pre_departure",
+        "in_trip",
+        "pre_return"
+      ],
+      "rule": "cat timp contactul are un flux din exclusive_flow_ids activ, orice mesaj comercial este suprimat."
+    },
+    "idempotency": {
+      "key_template": "{{client_id}}:{{contact_id}}:{{flow_id}}:{{step_id}}:{{occurrence_key}}",
+      "store": "contact_field",
+      "field_key": "jurnal_trimiteri",
+      "ttl_days": 400
+    },
+    "log": {
+      "field_key": "jurnal_trimiteri",
+      "retention_days": 400,
+      "human_readable_fields": {
+        "last_commercial": "ultim_mesaj_comercial",
+        "count_rolling": "mesaje_comerciale_7z"
+      }
+    }
+  },
+  "compliance": {
+    "consent_required_per_channel": true,
+    "consent_fields": {
+      "email": {
+        "flag": "consim_email",
+        "date": "consim_email_data",
+        "source": "consim_email_sursa"
+      },
+      "sms": {
+        "flag": "consim_sms",
+        "date": "consim_sms_data",
+        "source": "consim_sms_sursa"
+      },
+      "whatsapp": {
+        "flag": "consim_whatsapp",
+        "date": "consim_whatsapp_data",
+        "source": "consim_whatsapp_sursa"
+      }
+    },
+    "optout_tags": {
+      "email": "optout_email",
+      "sms": "optout_sms",
+      "whatsapp": "optout_whatsapp"
+    },
+    "sms_stop_keywords": [
+      "STOP",
+      "OPRESTE",
+      "OPREȘTE",
+      "DEZABONARE"
+    ],
+    "sms_stop_reply": "Ai fost dezabonat. Nu vei mai primi mesaje comerciale de la {{agency_name}}.",
+    "unsubscribe_url": "TODO",
+    "unsubscribe_required_in_commercial_email": true,
+    "pii_to_claude": "forbidden",
+    "data_residency_note": "Datele de contact rămân în GHL și n8n."
+  },
+  "content": {
+    "mix_targets": {
+      "inspiratie": 0.4,
+      "educatie": 0.2,
+      "incredere": 0.2,
+      "oferta": 0.2
+    },
+    "mix_measurement_window_days": 30,
+    "generation": {
+      "mode": "batch_pregenerated_human_reviewed",
+      "live_generation_allowed": false,
+      "review_required_before_upload": true,
+      "variants_per_cell": 2
+    },
+    "forbidden_in_generated": {
+      "patterns": [
+        "\\d+\\s?%",
+        "\\d+[\\.,]?\\d*\\s?(€|EUR|eur|lei|RON)",
+        "(mai\\s+sunt|ultimele|au\\s+r[aă]mas)\\s+\\d+\\s+locuri",
+        "\\b\\d{1,2}[\\./-]\\d{1,2}([\\./-]\\d{2,4})?\\b",
+        "\\bhotel(ul)?\\s+[A-ZȘȚĂÎÂ][\\w\\-]+"
+      ],
+      "reason": "prețuri, procente, disponibilități, date și nume de hoteluri intră exclusiv ca merge fields"
+    },
+    "sms_limits": {
+      "max_chars_gsm7": 320,
+      "warn_chars": 160
+    }
+  },
+  "merge_fields": [
+    {
+      "token": "prenume",
+      "source": "contact.firstName",
+      "fallback_strategy": "alternate_line",
+      "fallback_value": "",
+      "alternate_line": "Bună!",
+      "primary_line": "Bună, {{prenume}}!"
+    },
+    {
+      "token": "agency_name",
+      "source": "config.client.agency_name",
+      "fallback_strategy": "block_send"
+    }
+  ],
+  "flows": {},
+  "consultant_tasks": {
+    "create_on": []
+  },
+  "kpi": {
+    "metrics": [
+      "open_rate",
+      "click_rate",
+      "reply_rate",
+      "offer_requests",
+      "booking_conversion",
+      "avg_booking_value",
+      "revenue_per_flow",
+      "reactivated_contacts",
+      "repeat_customers"
+    ],
+    "attribution": {
+      "model": "last_touch",
+      "window_days": 30,
+      "flow_tag_prefix": "attr_"
+    }
+  }
+}

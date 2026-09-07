@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Preferințele tale de călătorie — Dor Travel</title>
+<!--
+  Generat de scripts/gen-form.mjs din config/clients/dor-travel.json.
+  Nu edita manual: modifică taxonomia din config și regenerează.
+  Endpoint-ul și secretul se completează la publicare (vezi docs/04).
+-->
+<style>
+  :root { color-scheme: light; --ink:#1c1a17; --muted:#6b645c; --line:#e3ded7; --bg:#faf8f5; --accent:#1f6f5c; }
+  * { box-sizing: border-box; }
+  body { margin:0; padding:2rem 1rem 4rem; font:16px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif; color:var(--ink); background:var(--bg); }
+  main { max-width: 42rem; margin: 0 auto; }
+  h1 { font-size: 1.6rem; margin: 0 0 .4rem; }
+  .lead { color: var(--muted); margin: 0 0 2rem; }
+  fieldset { border:1px solid var(--line); border-radius:10px; padding:1rem 1.1rem 1.2rem; margin:0 0 1.1rem; background:#fff; }
+  legend { padding: 0 .4rem; font-weight:600; font-size:.95rem; }
+  .field { display:block; margin:0 0 1.1rem; }
+  .field > span { display:block; font-weight:600; font-size:.95rem; margin-bottom:.35rem; }
+  select, input[type=text], input[type=email], input[type=tel] {
+    width:100%; padding:.6rem .7rem; border:1px solid var(--line); border-radius:8px; background:#fff; font:inherit; }
+  .chips { display:flex; flex-wrap:wrap; gap:.5rem; }
+  .chip { display:inline-flex; align-items:center; gap:.4rem; padding:.4rem .7rem; border:1px solid var(--line); border-radius:999px; background:#fff; cursor:pointer; font-size:.93rem; }
+  .chip:has(input:checked) { border-color:var(--accent); background:#eef6f3; }
+  .row { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+  .consent { display:flex; gap:.55rem; align-items:flex-start; margin:.5rem 0; font-size:.93rem; color:var(--muted); }
+  button { margin-top:.5rem; padding:.8rem 1.4rem; border:0; border-radius:8px; background:var(--accent); color:#fff; font:inherit; font-weight:600; cursor:pointer; }
+  button[disabled] { opacity:.55; cursor:default; }
+  .note { font-size:.85rem; color:var(--muted); margin-top:1.2rem; }
+  .status { margin-top:1rem; padding:.8rem 1rem; border-radius:8px; display:none; }
+  .status.ok { display:block; background:#eef6f3; border:1px solid #bcded2; }
+  .status.err { display:block; background:#fdf0ee; border:1px solid #f0c9c2; }
+  @media (max-width:520px) { .row { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Ce fel de vacanță ți se potrivește?</h1>
+  <p class="lead">Nu vindem camere de hotel. Recomandam vacanta potrivita pentru fiecare om, in pachet complet: zbor, transfer, cazare, mese si suport de la plecare pana la intoarcere.</p>
+
+  <form id="preferinte" novalidate>
+    <fieldset>
+      <legend>Cum te găsim</legend>
+      <div class="row">
+        <label class="field"><span>Prenume</span><input type="text" name="first_name" autocomplete="given-name"></label>
+        <label class="field"><span>Nume</span><input type="text" name="last_name" autocomplete="family-name"></label>
+      </div>
+      <div class="row">
+        <label class="field"><span>Email</span><input type="email" name="email" autocomplete="email" required></label>
+        <label class="field"><span>Telefon</span><input type="tel" name="phone" autocomplete="tel"></label>
+      </div>
+    </fieldset>
+
+      <label class="field">
+        <span>Din ce oraș pleci cel mai ușor?</span>
+        <select name="oras_plecare">
+          <option value="">— alege —</option>
+          <option value="Cluj-Napoca">Cluj-Napoca</option>
+          <option value="București">București</option>
+          <option value="Iași">Iași</option>
+          <option value="Timișoara">Timișoara</option>
+          <option value="Sibiu">Sibiu</option>
+          <option value="Oradea">Oradea</option>
+          <option value="Brașov">Brașov</option>
+          <option value="Constanța">Constanța</option>
+          <option value="Budapesta">Budapesta</option>
+          <option value="Chișinău">Chișinău</option>
+          <option value="Belgrad">Belgrad</option>
+        </select>
+      </label>
+      <fieldset>
+        <legend>Unde ți-ar plăcea să ajungi?</legend>
+        <div class="chips">
+          <label class="chip"><input type="checkbox" name="destinatii_favorite" value="Grecia"><span>Grecia</span></label>
+          <label class="chip"><input type="checkbox" name="destinatii_favorite" value="Turcia"><span>Turcia</span></label>
+          <label class="chip"><input type="checkbox" name="destinatii_favorite" value="Egipt"><span>Egipt</span></label>
+          <label class="chip"><input type="checkbox" name="destinatii_favorite" value="Croația"><span>Croația</span></label>
+          <label class="chip"><input type="checkbox" name="destinatii_favorite" value="Albania"><span>Albania</span></label>
+          <label class="chip"><input type="checkbox" name="destinatii_favorite" value="Cipru"><span>Cipru</span></label>
+          <label class="chip"><input type="checkbox" name="destinatii_favorite" value="Italia"><span>Italia</span></label>
+          <label class="chip"><input type="checkbox" name="destinatii_favorite" value="Emiratele Arabe Unite"><span>Emiratele Arabe Unite</span></label>
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>În ce perioadă ai vrea să pleci?</legend>
+        <div class="chips">
+          <label class="chip"><input type="checkbox" name="perioada_preferata" value="Mai"><span>Mai</span></label>
+          <label class="chip"><input type="checkbox" name="perioada_preferata" value="Iunie"><span>Iunie</span></label>
+          <label class="chip"><input type="checkbox" name="perioada_preferata" value="Iulie"><span>Iulie</span></label>
+          <label class="chip"><input type="checkbox" name="perioada_preferata" value="August"><span>August</span></label>
+          <label class="chip"><input type="checkbox" name="perioada_preferata" value="Septembrie"><span>Septembrie</span></label>
+          <label class="chip"><input type="checkbox" name="perioada_preferata" value="Octombrie"><span>Octombrie</span></label>
+        </div>
+      </fieldset>
+      <label class="field">
+        <span>Câte nopți ți se par potrivite?</span>
+        <select name="durata_preferata">
+          <option value="">— alege —</option>
+          <option value="5 nopți">5 nopți</option>
+          <option value="7 nopți">7 nopți</option>
+          <option value="10 nopți">10 nopți</option>
+          <option value="14 nopți">14 nopți</option>
+        </select>
+      </label>
+      <label class="field">
+        <span>La ce buget de persoană te gândești?</span>
+        <select name="buget_estimat">
+          <option value="">— alege —</option>
+          <option value="sub 700€">sub 700€</option>
+          <option value="700–1000€">700–1000€</option>
+          <option value="1000–1500€">1000–1500€</option>
+          <option value="peste 1500€">peste 1500€</option>
+        </select>
+      </label>
+      <label class="field">
+        <span>Ce categorie de resort preferi?</span>
+        <select name="categoria_hotel">
+          <option value="">— alege —</option>
+          <option value="3*">3*</option>
+          <option value="4*">4*</option>
+          <option value="5*">5*</option>
+        </select>
+      </label>
+      <label class="field">
+        <span>Ce regim de masă vrei?</span>
+        <select name="regim_masa">
+          <option value="">— alege —</option>
+          <option value="Mic dejun">Mic dejun</option>
+          <option value="Demipensiune">Demipensiune</option>
+          <option value="All Inclusive">All Inclusive</option>
+          <option value="Ultra All Inclusive">Ultra All Inclusive</option>
+        </select>
+      </label>
+      <label class="field">
+        <span>Bagaj</span>
+        <select name="bagaj">
+          <option value="">— alege —</option>
+          <option value="Doar cabină">Doar cabină</option>
+          <option value="Bagaj inclus">Bagaj inclus</option>
+        </select>
+      </label>
+      <label class="field">
+        <span>Cu cine călătorești de obicei?</span>
+        <select name="tip_turist">
+          <option value="">— alege —</option>
+          <option value="Familie">Familie</option>
+          <option value="Cuplu">Cuplu</option>
+          <option value="Senior">Senior</option>
+          <option value="Grup de prieteni">Grup de prieteni</option>
+          <option value="Solo">Solo</option>
+        </select>
+      </label>
+
+    <fieldset>
+      <legend>Pe ce canale vrei să vorbim</legend>
+        <label class="consent"><input type="checkbox" name="consent_email" value="da"><span>Vreau să primesc propuneri de vacanță pe email.</span></label>
+        <label class="consent"><input type="checkbox" name="consent_sms" value="da"><span>Vreau să primesc propuneri de vacanță prin SMS.</span></label>
+        <label class="consent"><input type="checkbox" name="consent_whatsapp" value="da"><span>Vreau să primesc propuneri de vacanță pe WhatsApp.</span></label>
+      <p class="note">Îți poți retrage acordul oricând, separat pe fiecare canal.</p>
+    </fieldset>
+
+    <button type="submit">Trimite preferințele</button>
+    <div class="status" id="status"></div>
+    <p class="note">Datele tale rămân la Dor Travel și sunt folosite doar ca să îți trimitem propuneri relevante.</p>
+  </form>
+</main>
+
+<script>
+  // Se completează la publicare: URL-ul webhook-ului WF00 și secretul de formular.
+  const ENDPOINT = window.PREFERINTE_ENDPOINT || '/webhook/preferinte/dor-travel';
+  const FORM_SECRET = window.PREFERINTE_SECRET || '';
+
+  const form = document.getElementById('preferinte');
+  const status = document.getElementById('status');
+
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const data = new FormData(form);
+    const payload = { source: location.href };
+
+    for (const key of new Set(data.keys())) {
+      const values = data.getAll(key).filter((v) => v !== '');
+      if (!values.length) continue;
+      // Câmpurile multi-select trimit listă, restul o singură valoare.
+      payload[key] = form.querySelectorAll('[name="' + key + '"]').length > 1 && form.querySelector('[name="' + key + '"]').type === 'checkbox'
+        ? values
+        : values[0];
+    }
+
+    if (!payload.email && !payload.phone) {
+      status.className = 'status err';
+      status.textContent = 'Avem nevoie de un email sau de un telefon ca să te putem contacta.';
+      return;
+    }
+
+    const button = form.querySelector('button');
+    button.disabled = true;
+    try {
+      const response = await fetch(ENDPOINT, {
+        method: 'POST',
+        headers: Object.assign({ 'Content-Type': 'application/json' }, FORM_SECRET ? { 'X-Form-Secret': FORM_SECRET } : {}),
+        body: JSON.stringify(payload),
+      });
+      if (!response.ok) throw new Error('HTTP ' + response.status);
+      status.className = 'status ok';
+      status.textContent = 'Gata — am notat preferințele tale. Îți scriem cu propuneri care chiar ți se potrivesc.';
+      form.querySelector('button').textContent = 'Trimis';
+    } catch (error) {
+      button.disabled = false;
+      status.className = 'status err';
+      status.textContent = 'Nu am putut trimite formularul. Mai încearcă o dată sau scrie-ne direct.';
+    }
+  });
+</script>
+</body>
+</html>
