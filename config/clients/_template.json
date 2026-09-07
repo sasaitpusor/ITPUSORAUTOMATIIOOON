@@ -29,6 +29,7 @@
       "auth_mode": "private_integration_token",
       "credential_name_n8n": "TODO — numele credenționalului n8n, NU token-ul",
       "location_id_env": "TODO_GHL_LOCATION_ID",
+      "location_id": "TODO — id-ul sub-contului, din URL-ul GHL",
       "api_versions": {
         "default": "2021-07-28",
         "conversations": "2021-04-15"

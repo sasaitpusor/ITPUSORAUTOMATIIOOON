@@ -24,15 +24,18 @@ if (!clientId) {
 }
 
 const config = loadConfig(clientId);
-const token = process.env.GHL_PIT;
-const locationId = process.env[config.integrations.ghl.location_id_env];
+// Tokenul vine doar din mediu. Id-ul sub-contului nu e secret, deci configul
+// poate servi ca sursă de rezervă — util când rulezi provisioning-ul de pe altă mașină.
+const token = process.env.GHL_PIT || process.env[config.integrations.ghl.token_env];
+const locationId = process.env[config.integrations.ghl.location_id_env] || config.integrations.ghl.location_id;
 
 if (!token) {
-  console.error(`Lipsește GHL_PIT. Emite un Private Integration Token cu scopurile:\n  ${config.integrations.ghl.required_pit_scopes.join('\n  ')}`);
+  console.error(`Lipsește tokenul. Setează GHL_PIT sau ${config.integrations.ghl.token_env}.`);
+  console.error(`Emite un Private Integration Token pe sub-contul GHL, cu scopurile:\n  ${config.integrations.ghl.required_pit_scopes.join('\n  ')}`);
   process.exit(2);
 }
 if (!locationId) {
-  console.error(`Lipsește variabila de mediu ${config.integrations.ghl.location_id_env} (id-ul sub-contului GHL).`);
+  console.error(`Lipsește id-ul sub-contului: nici ${config.integrations.ghl.location_id_env} în mediu, nici integrations.ghl.location_id în config.`);
   process.exit(2);
 }
 

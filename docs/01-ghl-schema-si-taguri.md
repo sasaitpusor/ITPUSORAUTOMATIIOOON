@@ -7,7 +7,7 @@ Client: **Dor Travel** · produs: *Destinația Ta Perfectă* · fus orar: `Europ
 
 | | |
 |---|---|
-| Custom fields | 41 |
+| Custom fields | 42 |
 | Tag-uri de segmentare | 53 |
 | Tag-uri de sistem | 29 |
 | Custom values | 7 |
@@ -86,9 +86,10 @@ select se derivă din axele de taxonomie — nu se scriu de două ori.
 
 | Cheie | Nume în GHL | Tip | Opțiuni |
 |---|---|---|---|
-| `ultim_mesaj_comercial` | Ultimul mesaj comercial (timestamp) | TEXT | — |
+| `ultim_mesaj_comercial` | Ultimul mesaj comercial (ISO) | TEXT | — |
 | `mesaje_comerciale_7z` | Mesaje comerciale în ultimele 7 zile | NUMERICAL | — |
 | `flux_activ_exclusiv` | Flux activ exclusiv | TEXT | — |
+| `jurnal_trimiteri` | Jurnal trimiteri (JSON) | LARGE_TEXT | — |
 
 ## 2. Tag-uri de segmentare
 
@@ -227,4 +228,4 @@ Fluxuri dezactivate: `referral` (docs/02-intrebari-deschise.md Q10 — mecanismu
 - **Plafon comercial**: max 3 mesaje / 7 zile rulante, minim 24h între ele.
 - **Tranzacționale**: trec peste plafon, nu se suprimă niciodată.
 - **Suprimare**: cât timp contactul e în `pre_departure`, `in_trip`, `pre_return`, fluxurile comerciale nu trimit.
-- **Idempotență**: cheie `{{client_id}}:{{contact_id}}:{{flow_id}}:{{step_id}}:{{occurrence_key}}`, stocată în `ghl_note`.
+- **Idempotență**: cheie `{{client_id}}:{{contact_id}}:{{flow_id}}:{{step_id}}:{{occurrence_key}}`, stocată în `contact_field`.

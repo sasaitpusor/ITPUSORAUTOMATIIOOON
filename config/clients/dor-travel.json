@@ -31,6 +31,7 @@
       "auth_mode": "private_integration_token",
       "credential_name_n8n": "GHL PIT — dor-travel",
       "location_id_env": "GHL_LOCATION_ID_DOR_TRAVEL",
+      "location_id": "vL4kcgP3mrXaUdOF5PW2",
       "api_versions": {
         "default": "2021-07-28",
         "conversations": "2021-04-15"

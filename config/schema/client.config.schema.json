@@ -182,6 +182,10 @@
                 "n8n_credential"
               ],
               "description": "env = un singur n8n servește mai mulți clienți, token-ul se ia din $env după client_id (clientul nou nu cere editarea niciunui node). n8n_credential = o credențială Header Auth mapată la import, necesară pe n8n Cloud unde $env nu e disponibil."
+            },
+            "location_id": {
+              "type": "string",
+              "description": "Id-ul sub-contului GHL. Nu e secret (apare în URL), e aici ca să se vadă cărui sub-cont îi aparține configul. Variabila de mediu din location_id_env are prioritate."
             }
           }
         },
