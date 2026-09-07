@@ -19,7 +19,7 @@
         "workflowId": {
           "__rl": true,
           "mode": "id",
-          "value": "={{ $env.WF_ID_SW00_LOAD_CONFIG }}"
+          "value": "__COMPLETEAZA_WF_ID_SW00_LOAD_CONFIG__"
         },
         "mode": "once",
         "options": {
@@ -41,7 +41,7 @@
     {
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "// SW01 · pregătirea apelului\n// Header-ul Version e obligatoriu pe GHL API v2 și diferă pe resurse — fără el request-ul e respins.\n// Generat de scripts/build-n8n.mjs — nu edita în n8n, modifică sursa.\n\nconst request = $('Când primește cererea').first().json;\nconst config = $input.first().json.config;\nconst ghl = config.integrations.ghl;\n\nconst method = (request.method || 'GET').toUpperCase();\nif (!request.path) throw new Error('SW01: path lipsă.');\n\nconst locationId = $env[ghl.location_id_env];\nif (!locationId) throw new Error('SW01: lipsește variabila de mediu ' + ghl.location_id_env + ' (id-ul sub-contului GHL).');\nif (!ghl.token_env || !$env[ghl.token_env]) {\n  throw new Error('SW01: lipsește variabila de mediu ' + ghl.token_env + ' (Private Integration Token).');\n}\n\n// Conversations cere altă valoare de Version decât restul resurselor.\nconst version = request.version_override\n  || (request.path.includes('/conversations') ? (ghl.api_versions.conversations || ghl.api_versions.default) : ghl.api_versions.default);\n\nconst resolvedPath = request.path.replace(/\\{locationId\\}/g, locationId);\nconst hasBody = request.body !== undefined && request.body !== null;\n\nreturn [{ json: {\n  method,\n  url: ghl.api_base.replace(/\\/$/, '') + resolvedPath,\n  version,\n  token_env: ghl.token_env,\n  query: request.query || {},\n  body: hasBody ? request.body : null,\n  has_body: hasBody,\n  location_id: locationId,\n  client_id: config.client.id,\n  label: method + ' ' + resolvedPath,\n} }];"
+        "jsCode": "// SW01 · pregătirea apelului\n// Header-ul Version e obligatoriu pe GHL API v2 și diferă pe resurse — fără el request-ul e respins.\n// Generat de scripts/build-n8n.mjs — nu edita în n8n, modifică sursa.\n\nconst request = $('Când primește cererea').first().json;\nconst config = $input.first().json.config;\nconst ghl = config.integrations.ghl;\n\nconst method = (request.method || 'GET').toUpperCase();\nif (!request.path) throw new Error('SW01: path lipsă.');\n\nconst locationId = '__COMPLETEAZA_GHL_LOCATION_ID__';\nif (!locationId) throw new Error('SW01: lipsește variabila de mediu ' + ghl.location_id_env + ' (id-ul sub-contului GHL).');\n// Tokenul vine din credențiala Header Auth a nodului HTTP, nu din mediu.\n\n// Conversations cere altă valoare de Version decât restul resurselor.\nconst version = request.version_override\n  || (request.path.includes('/conversations') ? (ghl.api_versions.conversations || ghl.api_versions.default) : ghl.api_versions.default);\n\nconst resolvedPath = request.path.replace(/\\{locationId\\}/g, locationId);\nconst hasBody = request.body !== undefined && request.body !== null;\n\nreturn [{ json: {\n  method,\n  url: ghl.api_base.replace(/\\/$/, '') + resolvedPath,\n  version,\n  token_env: ghl.token_env,\n  query: request.query || {},\n  body: hasBody ? request.body : null,\n  has_body: hasBody,\n  location_id: locationId,\n  client_id: config.client.id,\n  label: method + ' ' + resolvedPath,\n} }];"
       },
       "id": "235028387f90ff71",
       "name": "Pregătește apelul",
@@ -90,14 +90,10 @@
       "parameters": {
         "method": "={{ $json.method }}",
         "url": "={{ $json.url }}",
-        "authentication": "none",
+        "authentication": "genericCredentialType",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            {
-              "name": "Authorization",
-              "value": "={{ \"Bearer \" + $env[$json.token_env] }}"
-            },
             {
               "name": "Version",
               "value": "={{ $json.version }}"
@@ -122,7 +118,8 @@
               "neverError": false
             }
           }
-        }
+        },
+        "genericAuthType": "httpHeaderAuth"
       },
       "id": "aa74b18f8b4bd43b",
       "name": "Apel GHL (cu corp)",
@@ -135,20 +132,21 @@
       "retryOnFail": true,
       "maxTries": 4,
       "waitBetweenTries": 2500,
-      "onError": "continueErrorOutput"
+      "onError": "continueErrorOutput",
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "GHL Private Integration Token"
+        }
+      }
     },
     {
       "parameters": {
         "method": "={{ $json.method }}",
         "url": "={{ $json.url }}",
-        "authentication": "none",
+        "authentication": "genericCredentialType",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            {
-              "name": "Authorization",
-              "value": "={{ \"Bearer \" + $env[$json.token_env] }}"
-            },
             {
               "name": "Version",
               "value": "={{ $json.version }}"
@@ -170,7 +168,8 @@
               "neverError": false
             }
           }
-        }
+        },
+        "genericAuthType": "httpHeaderAuth"
       },
       "id": "262aab446bc3a1a4",
       "name": "Apel GHL (fără corp)",
@@ -183,7 +182,12 @@
       "retryOnFail": true,
       "maxTries": 4,
       "waitBetweenTries": 2500,
-      "onError": "continueErrorOutput"
+      "onError": "continueErrorOutput",
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "GHL Private Integration Token"
+        }
+      }
     },
     {
       "parameters": {

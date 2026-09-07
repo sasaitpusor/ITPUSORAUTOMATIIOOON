@@ -23,6 +23,36 @@ import { makeWorkflow, codeNode, boolCondition, executeWorkflowParams } from './
 const OUT_DIR = path.join(ROOT, 'n8n', 'workflows');
 const RUNTIME_DIR = path.join(ROOT, 'n8n', 'runtime');
 
+/**
+ * Ținta de rulare. Aceeași sursă, trei ieșiri, fiindcă n8n expune setările de
+ * instanță diferit după unde rulează:
+ *
+ *  self-hosted   `$env` — varianta pentru care e gândit sistemul: căutare
+ *                dinamică după client_id, deci un client nou nu cere editat
+ *                niciun node.
+ *  cloud-pro     `$vars` — Variables există pe Pro; se comportă la fel ca $env,
+ *                inclusiv la căutarea dinamică. Multi-client funcționează.
+ *  cloud-starter nici `$env`, nici `$vars`. Setările de instanță devin
+ *                marcaje de completat o dată la import, iar tokenul GHL o
+ *                credențială Header Auth. Consecință: O SINGURĂ agenție per
+ *                instanță — nu există cum să alegi credențiala după client.
+ */
+const TARGET = (process.argv.find((a) => a.startsWith('--target=')) || '--target=self-hosted').split('=')[1];
+const VALID_TARGETS = ['self-hosted', 'cloud-pro', 'cloud-starter'];
+if (!VALID_TARGETS.includes(TARGET)) {
+  console.error(`Țintă necunoscută "${TARGET}". Alege una din: ${VALID_TARGETS.join(', ')}`);
+  process.exit(2);
+}
+const IS_STARTER = TARGET === 'cloud-starter';
+const GHL_CREDENTIAL_NAME = 'GHL Private Integration Token';
+
+/** Marcajele pe care le completează omul la import, pe Starter. */
+const PLACEHOLDERS = [];
+const placeholder = (name, what) => {
+  if (!PLACEHOLDERS.some((p) => p.name === name)) PLACEHOLDERS.push({ name, what });
+  return `__COMPLETEAZA_${name}__`;
+};
+
 const CODE = 'n8n-nodes-base.code';
 const HTTP = 'n8n-nodes-base.httpRequest';
 const IF = 'n8n-nodes-base.if';
@@ -45,6 +75,79 @@ function inline(...moduleNames) {
       .replace(/^import .*$/gm, '')
       .trimEnd();
   }).join('\n\n');
+}
+
+/** Aplică o transformare pe fiecare șir din structură, oricât de adânc. */
+function mapStrings(value, fn) {
+  if (typeof value === 'string') return fn(value);
+  if (Array.isArray(value)) return value.map((v) => mapStrings(v, fn));
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, mapStrings(v, fn)]));
+  }
+  return value;
+}
+
+/**
+ * Traduce workflow-ul scris pentru `$env` în forma cerută de ținta aleasă.
+ *
+ * Sursa se scrie o singură dată, în varianta self-hosted. Restul sunt
+ * transformări mecanice, ca să nu existe trei copii ale acelorași noduri care
+ * să se despartă în timp.
+ */
+function retarget(workflow) {
+  if (TARGET === 'self-hosted') return workflow;
+
+  // Pe Pro, Variables se comportă exact ca variabilele de mediu, inclusiv la
+  // căutarea dinamică după client_id — deci o simplă redenumire.
+  if (TARGET === 'cloud-pro') {
+    return mapStrings(workflow, (text) => text.replaceAll('$env', '$vars'));
+  }
+
+  // Pe Starter nu există niciuna dintre ele. Setările de instanță devin marcaje
+  // de completat o dată la import; tokenul devine credențială.
+  const rules = [
+    // Verificarea tokenului nu mai are sens: el vine din credențială, nu din mediu.
+    [/\n?if \(!ghl\.token_env \|\| !\$env\[ghl\.token_env\]\) \{[\s\S]*?\n\}\n/,
+      "\n// Tokenul vine din credențiala Header Auth a nodului HTTP, nu din mediu.\n"],
+    [/\$env\[ghl\.location_id_env\]/g,
+      () => `'${placeholder('GHL_LOCATION_ID', 'id-ul sub-contului GHL — SW01, nodul „Pregătește apelul"')}'`],
+    [/\$env\.CONFIG_BASE_URL/g,
+      () => `'${placeholder('CONFIG_BASE_URL', 'URL-ul de unde n8n citește config/clients/<id>.json — SW00, nodul „Pregătește sursa configului"')}'`],
+    [/\$env\.CONFIG_CACHE_TTL_SECONDS/g, '300'],
+    [/\$env\['FORM_SECRET_' \+ clientId\.toUpperCase\(\)\.replace\(\/-\/g, '_'\)\]/g,
+      () => `'${placeholder('FORM_SECRET', 'secretul formularului de preferințe — WF00, nodul „Validează cererea"')}'`],
+    [/\$env\.ALERT_EMAIL\b/g,
+      () => `'${placeholder('ALERT_EMAIL', 'adresa care primește alertele — WF_ERR, nodul „Construiește alerta"')}'`],
+    [/\$env\.ALERT_FROM_EMAIL/g,
+      () => `'${placeholder('ALERT_FROM_EMAIL', 'expeditorul alertelor — WF_ERR, nodul „Trimite alerta"')}'`],
+    [/\$env\.KPI_SPREADSHEET_ID/g,
+      () => `'${placeholder('KPI_SPREADSHEET_ID', 'foaia de raportare — SW03, nodul „Scrie în raportare"')}'`],
+    // Id-urile sub-workflow-urilor: literal, completat după import.
+    [/=\{\{ \$env\.(WF_ID_\w+) \}\}/g,
+      (_, name) => placeholder(name, `id-ul workflow-ului ${name.replace('WF_ID_', '')} (din URL, după import)`)],
+  ];
+
+  const translated = mapStrings(workflow, (text) => {
+    let out = text;
+    for (const [pattern, replacement] of rules) out = out.replace(pattern, replacement);
+    return out;
+  });
+
+  // Tokenul GHL: credențială Header Auth în loc de expresie pe $env.
+  for (const node of translated.nodes) {
+    const params = node.parameters || {};
+    const headers = params.headerParameters?.parameters;
+    if (!headers) continue;
+    const authIndex = headers.findIndex((h) => h.name === 'Authorization');
+    if (authIndex === -1) continue;
+    headers.splice(authIndex, 1);
+    params.authentication = 'genericCredentialType';
+    params.genericAuthType = 'httpHeaderAuth';
+    // Doar numele credențialei, niciodată valoarea.
+    node.credentials = { httpHeaderAuth: { name: GHL_CREDENTIAL_NAME } };
+  }
+
+  return translated;
 }
 
 const header = (title, note) =>
@@ -916,31 +1019,96 @@ const workflows = [
 ];
 
 fs.mkdirSync(OUT_DIR, { recursive: true });
+console.log(`Țintă: ${TARGET}\n`);
 for (const [file, workflow] of workflows) {
-  fs.writeFileSync(path.join(OUT_DIR, file), `${JSON.stringify(workflow, null, 2)}\n`);
-  console.log(`  ${file.padEnd(34)} ${workflow.nodes.length} noduri`);
+  const emitted = retarget(workflow);
+  fs.writeFileSync(path.join(OUT_DIR, file), `${JSON.stringify(emitted, null, 2)}\n`);
+  console.log(`  ${file.padEnd(34)} ${emitted.nodes.length} noduri`);
 }
 
-const envExample = [
-  '# Variabile de mediu n8n. Se completează o dată pe instanță + o dată pe client.',
-  '# Niciun secret nu intră în JSON-urile de workflow.',
-  '',
-  '# ── Pe instanță ──',
-  '# Directorul de unde n8n descarcă config/clients/<client-id>.json',
-  'CONFIG_BASE_URL=https://exemplu.intern/config/clients',
-  'CONFIG_CACHE_TTL_SECONDS=300',
-  'ALERT_EMAIL=',
-  'ALERT_FROM_EMAIL=',
-  'KPI_SPREADSHEET_ID=',
-  '',
-  '# Id-urile workflow-urilor după import (Workflow → Settings → ID din URL).',
-  ...workflows.map(([, , envVar]) => `${envVar}=`),
-  '',
-  '# ── Pe client (sufix = client_id cu majuscule și _ în loc de -) ──',
-  'GHL_PIT_DOR_TRAVEL=',
-  'GHL_LOCATION_ID_DOR_TRAVEL=',
-  'FORM_SECRET_DOR_TRAVEL=',
-  '',
-].join('\n');
-fs.writeFileSync(path.join(ROOT, 'n8n', 'n8n.env.example'), envExample);
-console.log(`  n8n.env.example                    ${workflows.length} id-uri de workflow`);
+const settingNames = workflows.map(([, , envVar]) => envVar);
+
+if (IS_STARTER) {
+  // Pe Starter nu există variabile: se completează manual, o dată pe instanță.
+  const lines = [
+    '# Import în n8n Cloud Starter',
+    '',
+    'Generat de `scripts/build-n8n.mjs --target=cloud-starter`.',
+    '',
+    'Starter nu are nici variabile de mediu, nici Variables (`$vars` e pe Pro). De aceea',
+    'setările de instanță apar în workflow-uri ca marcaje `__COMPLETEAZA_...__` pe care le',
+    'completezi o singură dată, la import.',
+    '',
+    '**Consecință de arhitectură:** pe Starter merge o singură agenție per instanță, fiindcă',
+    'tokenul GHL e o credențială fixă pe node, nu una aleasă după `client_id`. Când adaugi a',
+    'doua agenție, treci pe Pro și regenerezi cu `npm run build:n8n:pro` — marcajele dispar și',
+    'multi-client funcționează fără să atingi vreun node.',
+    '',
+    '## 1. Importă workflow-urile',
+    '',
+    ...workflows.map(([file]) => `- [ ] \`${file}\``),
+    '',
+    '## 2. Credențiale',
+    '',
+    `- [ ] Header Auth, numită exact **${GHL_CREDENTIAL_NAME}** — Name: \`Authorization\`, Value: \`Bearer pit-...\``,
+    '- [ ] SMTP, pentru workflow-ul de alertare',
+    '- [ ] Google Sheets, pentru raportare',
+    '',
+    '## 3. Completează marcajele',
+    '',
+    'Caută fiecare marcaj în workflow-ul indicat și înlocuiește-l cu valoarea reală.',
+    '',
+    '| Marcaj | Ce pui în loc |',
+    '|---|---|',
+    ...PLACEHOLDERS.map((p) => `| \`__COMPLETEAZA_${p.name}__\` | ${p.what} |`),
+    '',
+    'Id-urile de workflow se iau din URL după import: `.../workflow/<ID>`.',
+    '',
+    '## 4. Error workflow',
+    '',
+    '- [ ] La fiecare workflow: Settings → Error Workflow → `WF_ERR · Alertare la eșec`',
+    '',
+    '## 5. Provisioning GHL',
+    '',
+    '- [ ] Deschide formularul workflow-ului `WF_SETUP · Provisioning GHL`',
+    '- [ ] Scrie id-ul clientului, alege „Doar planul", verifică raportul',
+    '- [ ] Rulează din nou cu „Aplică"',
+    '',
+    '## Atenție la cota de execuții',
+    '',
+    'Starter are 2.500 execuții/lună și **se oprește** când o atingi, nu te avertizează.',
+    'Urmărește-o în primele săptămâni: fluxurile tranzacționale consumă puțin, campaniile',
+    'trimise per contact consumă mult.',
+    '',
+  ];
+  fs.writeFileSync(path.join(ROOT, 'n8n', 'IMPORT-cloud-starter.md'), lines.join('\n'));
+  console.log(`  IMPORT-cloud-starter.md            ${PLACEHOLDERS.length} marcaje de completat`);
+} else {
+  const isVars = TARGET === 'cloud-pro';
+  const label = isVars ? 'Variables ($vars)' : 'variabile de mediu ($env)';
+  const example = [
+    `# ${isVars ? 'Variables n8n Cloud Pro' : 'Variabile de mediu n8n'} — se completează o dată pe instanță + o dată pe client.`,
+    '# Niciun secret nu intră în JSON-urile de workflow.',
+    isVars ? '# Se adaugă din interfață: Settings → Variables.' : '# Necesită N8N_BLOCK_ENV_ACCESS_IN_NODE=false.',
+    '',
+    '# ── Pe instanță ──',
+    '# Directorul de unde n8n descarcă config/clients/<client-id>.json',
+    'CONFIG_BASE_URL=https://exemplu.intern/config/clients',
+    'CONFIG_CACHE_TTL_SECONDS=300',
+    'ALERT_EMAIL=',
+    'ALERT_FROM_EMAIL=',
+    'KPI_SPREADSHEET_ID=',
+    '',
+    '# Id-urile workflow-urilor după import (din URL: .../workflow/<ID>).',
+    ...settingNames.map((name) => `${name}=`),
+    '',
+    '# ── Pe client (sufix = client_id cu majuscule și _ în loc de -) ──',
+    '# Numele exacte vin din config: integrations.ghl.token_env și location_id_env.',
+    'GHL_PIT_<CLIENT>=',
+    'GHL_LOCATION_ID_<CLIENT>=',
+    'FORM_SECRET_<CLIENT>=',
+    '',
+  ].join('\n');
+  fs.writeFileSync(path.join(ROOT, 'n8n', 'n8n.env.example'), example);
+  console.log(`  n8n.env.example                    ${settingNames.length} id-uri de workflow (${label})`);
+}

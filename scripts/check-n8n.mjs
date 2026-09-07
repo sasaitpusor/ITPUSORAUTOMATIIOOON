@@ -122,6 +122,14 @@ for (const file of files) {
     }
   }
 
+  // Coerența țintei: o ieșire pentru cloud nu are voie să mai conțină $env, și
+  // invers — altfel workflow-ul se importă curat și cade abia la prima rulare.
+  const usesEnv = /\$env[.[]/.test(raw);
+  const usesVars = /\$vars[.[]/.test(raw);
+  const hasPlaceholders = /__COMPLETEAZA_\w+__/.test(raw);
+  if (usesEnv && (usesVars || hasPlaceholders)) fail('amestecă $env cu $vars sau cu marcaje — build incomplet');
+  if (hasPlaceholders && usesVars) fail('amestecă marcaje de completat cu $vars — build incomplet');
+
   // Reutilizabilitate: niciun literal de client
   const lower = raw.toLowerCase();
   for (const [literal, why] of literals) {
@@ -134,7 +142,13 @@ for (const file of files) {
   }
 }
 
-console.log(`\nVerificate ${files.length} workflow-uri:`);
+const rawAll = files.map((f) => fs.readFileSync(path.join(WF_DIR, f), 'utf8')).join('\n');
+const detectedTarget = /\$vars[.[]/.test(rawAll) ? 'cloud-pro'
+  : /__COMPLETEAZA_\w+__/.test(rawAll) ? 'cloud-starter'
+    : 'self-hosted';
+const placeholders = [...new Set([...rawAll.matchAll(/__COMPLETEAZA_(\w+)__/g)].map((m) => m[1]))];
+
+console.log(`\nVerificate ${files.length} workflow-uri (țintă: ${detectedTarget}):`);
 for (const file of files) {
   const wf = JSON.parse(fs.readFileSync(path.join(WF_DIR, file), 'utf8'));
   const mine = problems.filter((p) => p.startsWith(`${file}:`));
@@ -147,3 +161,6 @@ if (problems.length) {
   process.exit(1);
 }
 console.log(`\n✓ structură validă, fără secrete, fără literale de client (${literals.size} literale verificate)`);
+if (placeholders.length) {
+  console.log(`  ${placeholders.length} marcaje de completat la import — vezi n8n/IMPORT-cloud-starter.md`);
+}

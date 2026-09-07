@@ -22,9 +22,29 @@ edita în n8n cu intenția de a păstra modificarea — modifică sursa și rule
 | `WF_ERR_alerting.json` | alertare la eșec, setat ca Error Workflow pe toate | — |
 | `WF_SETUP_provisioning.json` | creează în GHL câmpurile, tag-urile și custom values-urile cerute de config | formular `/form/provisioning-ghl` |
 
+## Ținte de rulare
+
+Aceeași sursă, trei ieșiri, fiindcă n8n expune setările de instanță diferit după unde rulează:
+
+| Comandă | Ținta | Cum ajung setările în workflow | Multi-client |
+|---|---|---|---|
+| `npm run build:n8n` | self-hosted | `$env`, căutare dinamică după `client_id` | da |
+| `npm run build:n8n:pro` | n8n Cloud **Pro** | `$vars` (Variables), la fel de dinamic | da |
+| `npm run build:n8n:starter` | n8n Cloud **Starter** | marcaje completate o dată la import + credențială | **nu — o agenție per instanță** |
+
+Starter nu are nici variabile de mediu, nici Variables. Tokenul GHL devine o credențială fixă pe
+node, deci nu poate fi ales după `client_id`. E suficient pentru un pilot cu o singură agenție;
+la a doua treci pe Pro și regenerezi — marcajele dispar, nu se editează niciun node.
+
+Ieșirea pentru Starter vine cu `IMPORT-cloud-starter.md`, generat, care listează exact ce marcaj se
+completează în ce node.
+
+**Ce e comis în `workflows/` acum: varianta Cloud Starter**, ținta aleasă pentru pilot. `npm run check`
+o regenerează. Ca să treci pe altă țintă, rulează comanda ei și comite rezultatul.
+
 ## Import
 
-1. `npm run build:n8n && npm run check:n8n`
+1. `npm run build:n8n && npm run check:n8n` (sau `:pro` / `:starter`)
 2. Importă cele 6 fișiere.
 3. Notează id-ul fiecărui workflow (din URL) în variabilele `WF_ID_*` — vezi `n8n.env.example`.
    Workflow-urile se referă unele la altele prin aceste variabile, nu prin id-uri hardcodate.

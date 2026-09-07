@@ -12,16 +12,23 @@ Legendă stare: **⛔ blochează acum** · **⚠ blochează faza următoare** ·
 
 ## Acces și infrastructură
 
-### 1. n8n e self-hosted sau cloud? Ce versiune? ⛔
+### 1. n8n e self-hosted sau cloud? ✅ RĂSPUNS: n8n Cloud Starter, cu trecere pe Pro la al doilea client
 **De ce contează:** pe self-hosted, workflow-urile citesc token-urile din `$env` după `client_id`, deci
 un client nou nu cere atins niciun node. n8n Cloud nu expune variabile de mediu arbitrare în expresii:
 acolo trebuie o credențială Header Auth mapată manual per client, ceea ce schimbă modelul de
 onboarding și strică testul de reutilizabilitate din brief.
 
-**Ce e deja construit pentru ambele:** `integrations.ghl.secrets_mode` (`env` | `n8n_credential`).
-Momentan e setat pe `env`.
+**Decizia și de ce:** nimeni din echipă nu întreține un server, ceea ce elimină self-hosted. Baza e
+sub 1.000 de contacte, deci încape în cele 2.500 de execuții/lună ale planului Starter — cu condiția
+ca fluxurile de campanie să trimită în lot, nu un workflow per contact. La a doua agenție e nevoie de
+`$vars`, care e pe Pro.
 
-**Unde intră răspunsul:** `integrations.ghl.secrets_mode`, plus `n8n/n8n.env.example`.
+**Ce s-a construit:** `scripts/build-n8n.mjs --target=` scoate din aceeași sursă workflow-uri pentru
+self-hosted (`$env`), Cloud Pro (`$vars`) și Cloud Starter (marcaje + credențială). Trecerea de la
+Starter la Pro e o comandă, nu o rescriere.
+
+**Ce rămâne de verificat cu suportul n8n:** dacă execuțiile de sub-workflow se numără separat în cota
+Cloud. Sursele publice se contrazic, iar arhitectura e intenționat bazată pe sub-workflow-uri.
 
 ---
 

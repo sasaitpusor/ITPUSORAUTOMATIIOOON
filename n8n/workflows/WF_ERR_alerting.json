@@ -15,7 +15,7 @@
     {
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "// WF_ERR · alertă\n// Niciun eșec silențios: fiecare execuție picată produce un mesaj cu context suficient pentru diagnostic.\n// Generat de scripts/build-n8n.mjs — nu edita în n8n, modifică sursa.\n\nconst e = $input.first().json;\nconst wfName = e.workflow?.name || 'necunoscut';\nconst node = e.execution?.lastNodeExecuted || 'necunoscut';\nconst message = e.execution?.error?.message || e.trigger?.error?.message || 'fără mesaj';\nconst url = e.execution?.url || '';\n\n// Contextul de client, când eroarea vine dintr-un flux care îl are.\nconst clientId = e.execution?.error?.context?.client_id || 'necunoscut';\n\nreturn [{ json: {\n  subject: '[n8n] ' + wfName + ' a eșuat — ' + node,\n  text: [\n    'Workflow: ' + wfName,\n    'Node: ' + node,\n    'Client: ' + clientId,\n    'Execuție: ' + (e.execution?.id || '—'),\n    'Moment: ' + new Date().toISOString(),\n    '',\n    'Eroare:',\n    message,\n    '',\n    url,\n  ].join('\\n'),\n  to: $env.ALERT_EMAIL || '',\n} }];"
+        "jsCode": "// WF_ERR · alertă\n// Niciun eșec silențios: fiecare execuție picată produce un mesaj cu context suficient pentru diagnostic.\n// Generat de scripts/build-n8n.mjs — nu edita în n8n, modifică sursa.\n\nconst e = $input.first().json;\nconst wfName = e.workflow?.name || 'necunoscut';\nconst node = e.execution?.lastNodeExecuted || 'necunoscut';\nconst message = e.execution?.error?.message || e.trigger?.error?.message || 'fără mesaj';\nconst url = e.execution?.url || '';\n\n// Contextul de client, când eroarea vine dintr-un flux care îl are.\nconst clientId = e.execution?.error?.context?.client_id || 'necunoscut';\n\nreturn [{ json: {\n  subject: '[n8n] ' + wfName + ' a eșuat — ' + node,\n  text: [\n    'Workflow: ' + wfName,\n    'Node: ' + node,\n    'Client: ' + clientId,\n    'Execuție: ' + (e.execution?.id || '—'),\n    'Moment: ' + new Date().toISOString(),\n    '',\n    'Eroare:',\n    message,\n    '',\n    url,\n  ].join('\\n'),\n  to: '__COMPLETEAZA_ALERT_EMAIL__' || '',\n} }];"
       },
       "id": "cbfd399f8e1a7db7",
       "name": "Construiește alerta",
@@ -28,7 +28,7 @@
     },
     {
       "parameters": {
-        "fromEmail": "={{ $env.ALERT_FROM_EMAIL }}",
+        "fromEmail": "={{ '__COMPLETEAZA_ALERT_FROM_EMAIL__' }}",
         "toEmail": "={{ $json.to }}",
         "subject": "={{ $json.subject }}",
         "emailFormat": "text",

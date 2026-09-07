@@ -19,7 +19,7 @@
         "workflowId": {
           "__rl": true,
           "mode": "id",
-          "value": "={{ $env.WF_ID_SW00_LOAD_CONFIG }}"
+          "value": "__COMPLETEAZA_WF_ID_SW00_LOAD_CONFIG__"
         },
         "mode": "once",
         "options": {
@@ -58,7 +58,7 @@
         "workflowId": {
           "__rl": true,
           "mode": "id",
-          "value": "={{ $env.WF_ID_SW02_SEND_GUARD }}"
+          "value": "__COMPLETEAZA_WF_ID_SW02_SEND_GUARD__"
         },
         "mode": "once",
         "options": {
@@ -398,7 +398,7 @@
         "workflowId": {
           "__rl": true,
           "mode": "id",
-          "value": "={{ $env.WF_ID_SW01_GHL_API }}"
+          "value": "__COMPLETEAZA_WF_ID_SW01_GHL_API__"
         },
         "mode": "once",
         "options": {
@@ -437,7 +437,7 @@
         "workflowId": {
           "__rl": true,
           "mode": "id",
-          "value": "={{ $env.WF_ID_SW01_GHL_API }}"
+          "value": "__COMPLETEAZA_WF_ID_SW01_GHL_API__"
         },
         "mode": "once",
         "options": {
@@ -504,7 +504,7 @@
         "documentId": {
           "__rl": true,
           "mode": "id",
-          "value": "={{ $env.KPI_SPREADSHEET_ID }}"
+          "value": "={{ '__COMPLETEAZA_KPI_SPREADSHEET_ID__' }}"
         },
         "sheetName": {
           "__rl": true,

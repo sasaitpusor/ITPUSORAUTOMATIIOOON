@@ -64,7 +64,9 @@ npm run provision -- dor-travel    # dry-run în GHL (--apply ca să scrie)
                                    # alternativ: workflow-ul WF_SETUP din n8n
 npm run docs -- dor-travel         # regenerează docs/01 din config
 npm run form -- dor-travel         # regenerează formularul de preferințe
-npm run build:n8n                  # regenerează workflow-urile
+npm run build:n8n                  # regenerează workflow-urile (self-hosted)
+npm run build:n8n:starter          # varianta pentru n8n Cloud Starter
+npm run build:n8n:pro              # varianta pentru n8n Cloud Pro
 npm run check:n8n                  # structură, secrete, literale de client
 npm test                           # logica de runtime
 ```

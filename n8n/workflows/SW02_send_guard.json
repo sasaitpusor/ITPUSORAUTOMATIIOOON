@@ -19,7 +19,7 @@
         "workflowId": {
           "__rl": true,
           "mode": "id",
-          "value": "={{ $env.WF_ID_SW00_LOAD_CONFIG }}"
+          "value": "__COMPLETEAZA_WF_ID_SW00_LOAD_CONFIG__"
         },
         "mode": "once",
         "options": {

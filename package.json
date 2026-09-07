@@ -4,17 +4,21 @@
   "private": true,
   "description": "Sistem de automatizare marketing multi-canal pentru agenții de turism: n8n + GoHighLevel + Claude API. Produs alb, parametrizabil per client.",
   "type": "module",
-  "engines": { "node": ">=18" },
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "validate": "node scripts/validate-config.mjs",
     "validate:all": "node scripts/validate-config.mjs --all",
     "provision": "node scripts/provision-ghl.mjs",
     "docs": "node scripts/gen-docs.mjs",
     "form": "node scripts/gen-form.mjs",
-    "build:n8n": "node scripts/build-n8n.mjs",
+    "build:n8n": "node scripts/build-n8n.mjs --target=self-hosted",
+    "build:n8n:starter": "node scripts/build-n8n.mjs --target=cloud-starter",
+    "build:n8n:pro": "node scripts/build-n8n.mjs --target=cloud-pro",
     "check:n8n": "node scripts/check-n8n.mjs",
     "test": "node scripts/test-runtime.mjs",
-    "check": "npm run validate:all && npm test && npm run build:n8n && npm run check:n8n"
+    "check": "npm run validate:all && npm test && npm run build:n8n:starter && npm run check:n8n"
   },
   "dependencies": {},
   "devDependencies": {}

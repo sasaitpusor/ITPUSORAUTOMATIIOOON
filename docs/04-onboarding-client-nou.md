@@ -53,7 +53,8 @@ Presupune n8n deja configurat — vezi pasul 3.
 Pașii de la 3.1 se fac **o singură dată pe instanță**, nu la fiecare client.
 
 ### 3.1 O dată pe instanță
-- [ ] `npm run build:n8n && npm run check:n8n`
+- [ ] Alege ținta: `npm run build:n8n` (self-hosted), `:pro` sau `:starter` — vezi `n8n/README.md`
+- [ ] `npm run check:n8n`
 - [ ] Importă cele 6 workflow-uri din `n8n/workflows/`
 - [ ] Notează id-ul fiecărui workflow (din URL) și pune-l în variabilele `WF_ID_*`
       (`n8n/n8n.env.example` are lista)
@@ -68,9 +69,9 @@ Pașii de la 3.1 se fac **o singură dată pe instanță**, nu la fiecare client
 - [ ] `FORM_SECRET_<CLIENT_ID>` — un secret aleatoriu pentru formular
 - [ ] Repornește n8n (variabilele de mediu se citesc la pornire)
 
-> Dacă n8n rulează pe Cloud, `$env` nu e disponibil în expresii: setează
-> `integrations.ghl.secrets_mode = "n8n_credential"` și mapează o credențială Header Auth per client.
-> Vezi întrebarea 1 din `02-intrebari-deschise.md`.
+> Pe **Cloud Starter** pașii 3.2 nu se aplică: nu există variabile. Urmează în schimb
+> `n8n/IMPORT-cloud-starter.md`, generat odată cu workflow-urile, și ține minte limita —
+> o singură agenție per instanță.
 
 ## 4. Formularul de preferințe
 
