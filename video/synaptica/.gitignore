@@ -1,0 +1,7 @@
+out/
+public/*.mp4
+public/*.mov
+public/*.MOV
+*.mp4
+*.mov
+*.MOV
