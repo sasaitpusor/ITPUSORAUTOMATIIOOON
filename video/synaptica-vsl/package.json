@@ -1,0 +1,20 @@
+{
+  "name": "synaptica-vsl",
+  "description": "VSL Synaptica Cluj 16:9 (Remotion 4): animații explicative peste video, scene full-screen, subtitrări sincronizate",
+  "scripts": {
+    "sheet": "node render.mjs sheet",
+    "render": "node render.mjs full"
+  },
+  "dependencies": {
+    "@fontsource-variable/fraunces": "^5.3.0",
+    "@fontsource/fraunces": "^5.3.0",
+    "@fontsource/inter": "^5.3.0",
+    "@remotion/bundler": "^4.0.537",
+    "@remotion/cli": "^4.0.537",
+    "@remotion/renderer": "^4.0.537",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "remotion": "^4.0.537"
+  },
+  "private": true
+}
