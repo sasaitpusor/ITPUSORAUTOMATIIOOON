@@ -1,0 +1,21 @@
+{
+  "name": "synaptica-video",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Motion graphics Synaptica Cluj (Remotion 4): hook animat, scene B-roll animate, subtitrări, card final",
+  "scripts": {
+    "stills": "node render.mjs stills",
+    "render": "node render.mjs full"
+  },
+  "dependencies": {
+    "@fontsource-variable/fraunces": "^5.3.0",
+    "@fontsource/fraunces": "^5.3.0",
+    "@fontsource/inter": "^5.3.0",
+    "@remotion/bundler": "^4.0.537",
+    "@remotion/cli": "^4.0.537",
+    "@remotion/renderer": "^4.0.537",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "remotion": "^4.0.537"
+  }
+}

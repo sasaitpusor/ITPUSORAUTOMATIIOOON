@@ -1,0 +1,7 @@
+out/
+public/*.mp4
+public/maps/
+*.mp4
+*.mov
+*.MOV
+*.wav
