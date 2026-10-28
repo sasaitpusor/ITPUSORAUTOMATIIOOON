@@ -20,13 +20,13 @@ export const WaveGlyph: React.FC<{ w: number; h: number; cycles: number; amp?: n
   );
 };
 
-/** The 5 bands, slow → fast (wave names as agreed: delta · teta · alfa · beta · gama). */
+/** The 5 bands, slow → fast (wave names as in the client's script: Delta · Theta · Alpha · Beta · Gamma). */
 export const BANDS = [
   { name: 'Delta', role: 'somn profund', cycles: 1.5 },
-  { name: 'Teta', role: 'relaxare profundă', cycles: 2.5 },
-  { name: 'Alfa', role: 'calm și liniște', cycles: 4 },
+  { name: 'Theta', role: 'relaxare profundă', cycles: 2.5 },
+  { name: 'Alpha', role: 'calm și liniște', cycles: 4 },
   { name: 'Beta', role: 'gândire, concentrare', cycles: 7 },
-  { name: 'Gama', role: 'integrarea informațiilor', cycles: 11 },
+  { name: 'Gamma', role: 'integrarea informațiilor', cycles: 11 },
 ] as const;
 
 /** Client B-roll (filmed vertically, 1080×1920): plays `clip` from `clipFrom` s, starting at output time `start`, for `dur` s, inside a portrait card. */

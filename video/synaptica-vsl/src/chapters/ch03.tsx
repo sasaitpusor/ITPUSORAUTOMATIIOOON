@@ -2,9 +2,9 @@
 // One continuous WaveRow (5 cards side by side, slow → fast) that changes shape with the edit:
 //  MINI   104.4–106.15  cream PanelCard on the right (FRONTAL): „5 tipuri de unde”, 5 small waves draw on „5”.
 //  → FS1  106.15–106.5  the card expands to a NAVY full-screen scene (covers the join at 106.5).
-//  FS1    106.5–112.667 Delta / Teta light up on their words, role on the role word; „mai lente → mai rapide”.
+//  FS1    106.5–112.667 Delta / Theta light up on their words, role on the role word; „mai lente → mai rapide”.
 //  → PANEL 112.667–113.117 on the cut to LATERAL the scene retreats into a navy panel over the monitor (face stays free).
-//  PANEL  113.1–122.333 Alfa / Beta / Gama light up; active role as caption under the cards.
+//  PANEL  113.1–122.333 Alpha / Beta / Gamma light up; active role as caption under the cards.
 //  → FS2  122.333–122.633 the panel expands again (covers the camera pan) → „Nicio undă nu e bună sau rea · Fiecare are rolul ei”.
 // The waves are NOT the map rows: horizontal cards, never aligned with the map grid. Every state carries „Reprezentare ilustrativă”.
 import React from 'react';
@@ -36,7 +36,7 @@ const WD = {
   profund: 108.9, exista: wt('există', 123.05), frecventa: wt('frecvență', 124.09),
 };
 // band i lights on its name, its role appears on the role word
-const ON = [wt('delta', 106.65), wt('teta', 109.95), wt('alfa', 112.83), wt('beta', 115.65), wt('gama', 120.37)];
+const ON = [wt('delta', 106.65), wt('theta', 109.95), wt('alpha', 112.83), wt('beta', 115.65), wt('gamma', 120.37)];
 const ROLE_AT = [wt('somnului', 108.17), wt('relaxarea', 111.27), wt('calmitate', 114.23), wt('gândire', 117.83), wt('integrarea', 121.31)];
 const SPEED = [0.22, 0.34, 0.5, 0.8, 1.2];        // phase speed (cycles/s): slow → fast
 const AMP = [0.42, 0.37, 0.32, 0.26, 0.21];       // each wave keeps its own amplitude (never equal)
@@ -86,7 +86,7 @@ const phase = (t: number): { a: St; b: St; k: number; nk: number } => {
 const rgba = (k: number, a: number[], b: number[]) => `rgba(${[0, 1, 2].map((j) => Math.round(mix(a[j], b[j], k))).join(',')},${mix(a[3], b[3], k).toFixed(3)})`;
 const SAGE40 = [78, 110, 96, 0.4], GOLD = [205, 179, 96, 1];
 
-/** 0..1 — how lit band i is (one at a time; Gama stays lit; all five on „există”). */
+/** 0..1 — how lit band i is (one at a time; Gamma stays lit; all five on „există”). */
 const act = (t: number, i: number) => {
   const on = p(t, ON[i] - 0.05, ON[i] + 0.3);
   const off = i < 4 ? 1 - p(t, ON[i + 1] - 0.05, ON[i + 1] + 0.3) : 1;
@@ -94,7 +94,7 @@ const act = (t: number, i: number) => {
   return Math.max(Math.min(on, off), all);
 };
 
-// ─── line icons (56 × 56 box): Delta moon · Teta leaf · Alfa ripples · Beta target · Gama loose network ───
+// ─── line icons (56 × 56 box): Delta moon · Theta leaf · Alpha ripples · Beta target · Gamma loose network ───
 const ring = (cx: number, cy: number, r: number) => `M${cx - r} ${cy} a${r} ${r} 0 1 0 ${2 * r} 0 a${r} ${r} 0 1 0 ${-2 * r} 0`;
 const ICONS: string[][] = [
   ['M23.8 10.1 A20 20 0 1 0 44.9 36.5 A17 17 0 0 1 23.8 10.1 Z'],
